@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import init_db
-from routers import projects
+from routers import projects, scripts, assets
 
 
 @asynccontextmanager
@@ -21,6 +21,8 @@ app.add_middleware(
 )
 
 app.include_router(projects.router, prefix="/api")
+app.include_router(scripts.router, prefix="/api")
+app.include_router(assets.router, prefix="/api")
 
 
 @app.get("/api/health")
