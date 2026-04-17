@@ -4,10 +4,10 @@ import { useAssembly } from '../../hooks/useAssembly'
 import { useShots } from '../../hooks/useShots'
 import { useAssets } from '../../hooks/useAssets'
 import { useGlobalSettings } from '../../hooks/useGlobalSettings'
+import { useVideoGeneration } from '../../hooks/useVideoGeneration'
 import ShotNavPanel from '../../components/assembly/ShotNavPanel'
 import CentralWorkArea from '../../components/assembly/CentralWorkArea'
 import ParamsPanel from '../../components/assembly/ParamsPanel'
-import { type Asset } from '../../api/assets'
 
 interface Tab3AssemblyProps {
   episodeId: number
@@ -18,130 +18,89 @@ export default function Tab3Assembly({ episodeId, projectId }: Tab3AssemblyProps
   const [globalPrompt, setGlobalPrompt] = useState('')
 
   // Hooks
-  const {
-    prompts,
-    loading: promptsLoading,
-    generating,
-    error: promptsError,
-    generatePrompts,
-    editPrompt,
-    confirmPrompt,
-  } = usePrompts(episodeId)
-
-  const {
-    shotsCollection,
-    loading: shotsLoading,
-  } = useShots(episodeId)
-
+  const { prompts, loading: promptsLoading, generating, error: promptsError, generatePrompts, editPrompt, confirmPrompt } = usePrompts(episodeId)
+  const { shotsCollection, loading: shotsLoading } = useShots(episodeId)
   const { allAssets, loading: assetsLoading } = useAssets(projectId)
-
   const { settings } = useGlobalSettings(projectId)
+  const videoGen = useVideoGeneration(episodeId)
 
   // Assembly state
   const assembly = useAssembly(prompts, globalPrompt)
 
-  // Sync global prompt from settings
+  // Sync global prompt
   useEffect(() => {
-    if (settings?.global_prompt) {
-      setGlobalPrompt(settings.global_prompt)
-    }
+    if (settings?.global_prompt) setGlobalPrompt(settings.global_prompt)
   }, [settings])
 
+  // 切换镜头时加载视频版本
+  useEffect(() => {
+    if (assembly.currentShotId && assembly.mode === 'video') {
+      videoGen.fetchVersions(assembly.currentShotId)
+    } else {
+      videoGen.clearVersions()
+    }
+  }, [assembly.currentShotId, assembly.mode])
+
   // 按类型分组资产
-  const groupedAssets = useMemo(() => {
-    const characters = allAssets.filter(a => a.asset_type === 'character')
-    const scenes = allAssets.filter(a => a.asset_type === 'scene')
-    const props = allAssets.filter(a => a.asset_type === 'prop')
-    return { characters, scenes, props }
-  }, [allAssets])
+  const groupedAssets = useMemo(() => ({
+    characters: allAssets.filter(a => a.asset_type === 'character'),
+    scenes: allAssets.filter(a => a.asset_type === 'scene'),
+    props: allAssets.filter(a => a.asset_type === 'prop'),
+  }), [allAssets])
 
   // Loading state
   const isLoading = promptsLoading || shotsLoading || assetsLoading
 
-  // Generate prompts handler
-  const handleGeneratePrompts = async () => {
-    try {
-      await generatePrompts()
-    } catch (e) {
-      console.error('生成提示词失败:', e)
-    }
-  }
-
-  // Edit prompt handler
+  // Handlers
   const handleEditPrompt = async (shotId: string, imagePrompt?: string, videoPrompt?: string) => {
-    try {
-      await editPrompt(shotId, {
-        image_prompt: imagePrompt,
-        video_prompt: videoPrompt,
-      })
-    } catch (e) {
-      console.error('更新提示词失败:', e)
-    }
+    try { await editPrompt(shotId, { image_prompt: imagePrompt, video_prompt: videoPrompt }) }
+    catch (e) { console.error('更新提示词失败:', e) }
   }
 
-  // Confirm prompt handler
   const handleConfirmPrompt = async (shotId: string) => {
-    try {
-      await confirmPrompt(shotId)
-    } catch (e) {
-      console.error('确认提示词失败:', e)
-    }
+    try { await confirmPrompt(shotId) }
+    catch (e) { console.error('确认提示词失败:', e) }
   }
 
-  // Get current prompt data
+  // 视频生成 handler
+  const handleGenerateVideo = async () => {
+    if (!assembly.currentShotId || !currentPrompt) return
+    try {
+      await videoGen.submitGeneration({
+        shot_id: assembly.currentShotId,
+        video_prompt: finalVideoPrompt,
+        reference_images: assembly.referenceImages,
+        anchor_declaration: anchorDeclaration,
+        model: settings?.default_model || 'seedance2.0',
+        duration: settings?.default_duration || 4,
+        resolution: settings?.default_resolution || '1080p',
+      })
+    } catch (e) { console.error('视频生成失败:', e) }
+  }
+
+  // Current data
   const currentPrompt = prompts.find(p => p.shot_id === assembly.currentShotId)
   const currentShot = shotsCollection?.shots.find(s => s.shot_id === assembly.currentShotId)
+  const finalVideoPrompt = assembly.currentShotId ? assembly.getFinalVideoPrompt(assembly.currentShotId) : ''
+  const anchorDeclaration = assembly.referenceImages.map((img, i) => {
+    const asset = allAssets.find(a => a.images?.[0] === img)
+    return asset ? `图${i + 1}是${asset.name}` : null
+  }).filter(Boolean).join('，')
 
-  // Build final video prompt for display
-  const finalVideoPrompt = assembly.currentShotId
-    ? assembly.getFinalVideoPrompt(assembly.currentShotId)
-    : ''
-
-  if (isLoading) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <div className="text-gray-400">加载中...</div>
-      </div>
-    )
-  }
-
-  if (!shotsCollection?.shots.length) {
-    return (
-      <div className="flex h-full flex-col items-center justify-center gap-4">
-        <div className="text-gray-400">无分镜数据，请先在 Tab 2 完成分镜规划</div>
-      </div>
-    )
-  }
-
-  if (!prompts.length) {
-    return (
-      <div className="flex h-full flex-col items-center justify-center gap-4">
-        <div className="text-gray-400">尚未生成提示词</div>
-        <button
-          onClick={handleGeneratePrompts}
-          disabled={generating}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
-        >
-          {generating ? '生成中...' : '生成提示词'}
-        </button>
-        {promptsError && <div className="text-red-500">{promptsError}</div>}
-      </div>
-    )
-  }
+  if (isLoading) return <div className="flex h-full items-center justify-center text-gray-400">加载中...</div>
+  if (!shotsCollection?.shots.length) return <div className="flex h-full items-center justify-center text-gray-400">无分镜数据</div>
+  if (!prompts.length) return (
+    <div className="flex h-full flex-col items-center justify-center gap-4">
+      <div className="text-gray-400">尚未生成提示词</div>
+      <button onClick={generatePrompts} disabled={generating} className="px-4 py-2 bg-blue-500 text-white rounded">{generating ? '生成中...' : '生成提示词'}</button>
+    </div>
+  )
 
   return (
     <div className="flex h-full gap-2 p-2">
-      {/* 左列：镜头导航 */}
       <div className="w-[15%] min-w-[180px] border rounded bg-white overflow-hidden">
-        <ShotNavPanel
-          shots={shotsCollection?.shots || []}
-          prompts={prompts}
-          currentShotId={assembly.currentShotId}
-          onSelectShot={(shotId, groupId) => assembly.selectShot(shotId, groupId)}
-        />
+        <ShotNavPanel shots={shotsCollection?.shots || []} prompts={prompts} currentShotId={assembly.currentShotId} onSelectShot={assembly.selectShot} />
       </div>
-
-      {/* 中央：工作区 */}
       <div className="w-[55%] border rounded bg-white overflow-hidden flex flex-col">
         <CentralWorkArea
           mode={assembly.mode}
@@ -157,10 +116,14 @@ export default function Tab3Assembly({ episodeId, projectId }: Tab3AssemblyProps
           onRemoveSpecial={assembly.removeSpecialPrompt}
           currentGroupId={assembly.currentGroupId}
           shotIds={shotsCollection?.shots.map(s => s.shot_id) || []}
+          videoVersions={videoGen.versions}
+          currentVersionId={videoGen.currentVersionId}
+          onSelectVersion={videoGen.selectVersion}
+          onMarkApproved={videoGen.markApproved}
+          onMarkRejected={videoGen.markRejected}
+          videoGenerating={videoGen.generating}
         />
       </div>
-
-      {/* 右列：参数面板 */}
       <div className="w-[30%] min-w-[280px] border rounded bg-white overflow-hidden">
         <ParamsPanel
           settings={settings}
@@ -171,6 +134,8 @@ export default function Tab3Assembly({ episodeId, projectId }: Tab3AssemblyProps
           currentShotId={assembly.currentShotId}
           allAssets={allAssets}
           groupedAssets={groupedAssets}
+          onGenerateVideo={handleGenerateVideo}
+          videoGenerating={videoGen.generating}
         />
       </div>
     </div>

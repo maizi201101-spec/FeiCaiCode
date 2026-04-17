@@ -1,4 +1,4 @@
-import { type GlobalSettings, type SpecialPrompt } from '../../api/prompts'
+import { type GlobalSettings } from '../../api/prompts'
 import { type Asset } from '../../api/assets'
 
 interface GroupedAssets {
@@ -16,6 +16,8 @@ interface ParamsPanelProps {
   currentShotId: string | null
   allAssets: Asset[]
   groupedAssets: GroupedAssets
+  onGenerateVideo?: () => void
+  videoGenerating?: boolean
 }
 
 export default function ParamsPanel({
@@ -27,6 +29,8 @@ export default function ParamsPanel({
   currentShotId,
   allAssets,
   groupedAssets,
+  onGenerateVideo,
+  videoGenerating = false,
 }: ParamsPanelProps) {
   // 按顺序合并资产图（人物→场景→道具）
   const allAssetImages = [
@@ -184,8 +188,12 @@ export default function ParamsPanel({
 
       {/* 生成按钮 */}
       <div className="p-2">
-        <button disabled={!currentShotId} className="w-full py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:bg-gray-300">
-          {currentShotId ? `生成镜头 ${currentShotId}` : '请选择镜头'}
+        <button
+          onClick={onGenerateVideo}
+          disabled={!currentShotId || videoGenerating}
+          className="w-full py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:bg-gray-300"
+        >
+          {videoGenerating ? '生成中...' : currentShotId ? `生成镜头 ${currentShotId}` : '请选择镜头'}
         </button>
         <div className="mt-2 flex gap-1">
           <button disabled={!currentShotId} className="flex-1 py-1 text-xs bg-gray-100 text-gray-600 rounded hover:bg-gray-200 disabled:opacity-50">

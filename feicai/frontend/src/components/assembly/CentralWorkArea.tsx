@@ -2,6 +2,8 @@ import { useState, useRef } from 'react'
 import { type Shot } from '../../api/shots'
 import { type Prompt, type SpecialPrompt } from '../../api/prompts'
 import { type Asset } from '../../api/assets'
+import { type VideoVersion } from '../../api/videos'
+import VideoVersionTabs from './VideoVersionTabs'
 
 interface GroupedAssets {
   characters: Asset[]
@@ -23,6 +25,12 @@ interface CentralWorkAreaProps {
   onRemoveSpecial: (id: string) => void
   currentGroupId: string | null
   shotIds: string[]
+  videoVersions?: VideoVersion[]
+  currentVersionId?: number | null
+  onSelectVersion?: (versionId: number) => void
+  onMarkApproved?: (versionId: number) => void
+  onMarkRejected?: (versionId: number) => void
+  videoGenerating?: boolean
 }
 
 export default function CentralWorkArea({
@@ -39,6 +47,12 @@ export default function CentralWorkArea({
   onRemoveSpecial,
   currentGroupId,
   shotIds,
+  videoVersions = [],
+  currentVersionId,
+  onSelectVersion,
+  onMarkApproved,
+  onMarkRejected,
+  videoGenerating = false,
 }: CentralWorkAreaProps) {
   const scopeRef = useRef<HTMLSelectElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -204,11 +218,33 @@ export default function CentralWorkArea({
         )}
       </div>
 
-      {/* 预览区占位（Phase 8 实现） */}
-      <div className="h-20 border-b bg-gray-100 flex items-center justify-center">
-        <div className="text-xs text-gray-400">
-          {mode === 'image' ? '分镜图预览区（Phase 8）' : '视频预览区（Phase 8）'}
-        </div>
+      {/* 预览区（视频模式显示视频播放器 + 版本标签） */}
+      <div className="h-24 border-b bg-gray-100 flex items-center justify-center">
+        {mode === 'video' ? (
+          <div className="flex-1 flex flex-col items-center justify-center gap-1">
+            {/* 视频播放器 */}
+            {videoVersions.length > 0 && currentVersionId ? (
+              <video
+                src={videoVersions.find(v => v.id === currentVersionId)?.video_path}
+                className="max-h-16 rounded"
+                controls
+              />
+            ) : (
+              <div className="text-xs text-gray-400">无视频，点击右列「生成此镜头」</div>
+            )}
+            {/* 版本标签 */}
+            <VideoVersionTabs
+              versions={videoVersions}
+              currentVersionId={currentVersionId}
+              onSelectVersion={onSelectVersion || (() => {})}
+              onMarkApproved={onMarkApproved || (() => {})}
+              onMarkRejected={onMarkRejected || (() => {})}
+              generating={videoGenerating}
+            />
+          </div>
+        ) : (
+          <div className="text-xs text-gray-400">分镜图预览区（Phase 8）</div>
+        )}
       </div>
 
       {/* 提示词编辑区域 */}
