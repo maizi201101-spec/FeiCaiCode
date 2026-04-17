@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import init_db
-from routers import projects, scripts, assets, asset_images, tasks, shots
+from routers import projects, scripts, assets, asset_images, tasks, shots, prompts, settings
 
 
 @asynccontextmanager
@@ -26,6 +26,8 @@ app.include_router(assets.router, prefix="/api")
 app.include_router(asset_images.router, prefix="/api")
 app.include_router(tasks.router, prefix="/api")
 app.include_router(shots.router)
+app.include_router(prompts.router)
+app.include_router(settings.router)
 
 
 @app.get("/api/health")
