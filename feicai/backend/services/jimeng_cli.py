@@ -1,6 +1,6 @@
 """
-即梦 CLI 调用服务
-采用 subprocess 方式调用本地 CLI 工具生成图片
+Dreamina CLI 调用服务
+使用 subprocess 方式调用本地 dreamina CLI 工具生成图片
 """
 
 import asyncio
@@ -9,32 +9,40 @@ import json
 from pathlib import Path
 from typing import Optional
 import aiosqlite
+import shutil
 
 DB_PATH = Path(__file__).parent.parent / "feicai.db"
 
+# Dreamina CLI 默认路径
+DREAMINA_CLI_PATH = Path.home() / ".local" / "bin" / "dreamina"
 
-class JimengCLIError(Exception):
-    """即梦 CLI 调用错误"""
+
+class DreaminaCLIError(Exception):
+    """Dreamina CLI 调用错误"""
     pass
 
 
-async def get_jimeng_config() -> dict:
-    """从 settings 表读取即梦 CLI 配置"""
+async def get_dreamina_config() -> dict:
+    """从 settings 表读取 Dreamina CLI 配置"""
     async with aiosqlite.connect(DB_PATH) as db:
         cursor = await db.execute(
-            "SELECT key, value FROM settings WHERE key LIKE 'jimeng_%'"
+            "SELECT key, value FROM settings WHERE key LIKE 'dreamina_%'"
         )
         rows = await cursor.fetchall()
 
     config = {
-        "cli_path": "jimeng",  # 默认命令名（假设已安装到 PATH）
-        "default_params": {},
+        "cli_path": str(DREAMINA_CLI_PATH) if DREAMINA_CLI_PATH.exists() else "dreamina",
+        "default_params": {
+            "model_version": "4.0",
+            "ratio": "1:1",
+            "resolution_type": "2k",
+        },
     }
 
     for key, value in rows:
-        if key == "jimeng_cli_path":
+        if key == "dreamina_cli_path":
             config["cli_path"] = value
-        elif key == "jimeng_default_params":
+        elif key == "dreamina_default_params":
             try:
                 config["default_params"] = json.loads(value)
             except json.JSONDecodeError:
@@ -80,41 +88,49 @@ def build_prompt_from_asset(asset_type: str, asset_data: dict) -> str:
 
 async def generate_image(
     prompt: str,
-    output_path: Path,
+    output_dir: Path,
     timeout: int = 120,
 ) -> str:
     """
-    调用即梦 CLI 生成图片
+    调用 Dreamina CLI 生成图片
 
     Args:
         prompt: 图片生成提示词
-        output_path: 输出文件路径（绝对路径）
-        timeout: 超时时间（秒）
+        output_dir: 输出目录（图片下载目录）
+        timeout: 超时时间（秒），用于 --poll 参数
 
     Returns:
         生成的图片路径
 
     Raises:
-        JimengCLIError: CLI 调用失败
+        DreaminaCLIError: CLI 调用失败
     """
-    config = await get_jimeng_config()
+    config = await get_dreamina_config()
     cli_path = config["cli_path"]
 
     # 确保输出目录存在
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    # 构造 CLI 命令
-    # 假设即梦 CLI 的调用方式：jimeng generate --prompt "..." --output path.jpg
+    # 检查 CLI 是否存在
+    if not Path(cli_path).exists():
+        # 尝试在 PATH 中查找
+        cli_in_path = shutil.which("dreamina")
+        if cli_in_path:
+            cli_path = cli_in_path
+        else:
+            raise DreaminaCLIError(f"Dreamina CLI 未安装或路径错误: {cli_path}")
+
+    # 构造 CLI 命令：text2image + poll（等待结果）
     cmd = [
         cli_path,
-        "generate",
-        "--prompt", prompt,
-        "--output", str(output_path),
+        "text2image",
+        f"--prompt={prompt}",
+        f"--poll={timeout}",  # 在提交后轮询等待结果
     ]
 
-    # 添加额外参数
+    # 添加默认参数
     for key, value in config.get("default_params", {}).items():
-        cmd.extend([f"--{key}", str(value)])
+        cmd.append(f"--{key}={value}")
 
     try:
         # 使用 asyncio 创建 subprocess
@@ -126,37 +142,121 @@ async def generate_image(
 
         stdout, stderr = await asyncio.wait_for(
             process.communicate(),
-            timeout=timeout
+            timeout=timeout + 30
         )
 
         if process.returncode != 0:
             error_msg = stderr.decode("utf-8", errors="ignore") if stderr else "未知错误"
-            raise JimengCLIError(f"即梦 CLI 调用失败 (code {process.returncode}): {error_msg}")
+            raise DreaminaCLIError(f"Dreamina CLI 调用失败 (code {process.returncode}): {error_msg}")
 
-        # 验证文件是否生成
-        if not output_path.exists():
-            raise JimengCLIError(f"图片未生成，预期路径: {output_path}")
+        # 解析 JSON 输出
+        output = stdout.decode("utf-8", errors="ignore")
+        result = json.loads(output)
 
-        return str(output_path)
+        if result.get("gen_status") == "success":
+            submit_id = result.get("submit_id")
+            if submit_id:
+                # 使用 query_result 下载图片到指定目录
+                return await download_result_image(cli_path, submit_id, output_dir)
+            raise DreaminaCLIError("缺少 submit_id")
 
+        if result.get("gen_status") == "fail":
+            fail_reason = result.get("fail_reason") or result.get("result_json", {}).get("fail_reason", "未知原因")
+            raise DreaminaCLIError(f"生成失败: {fail_reason}")
+
+        if result.get("gen_status") == "querying":
+            submit_id = result.get("submit_id")
+            if submit_id:
+                return await download_result_image(cli_path, submit_id, output_dir, poll_timeout=timeout)
+            raise DreaminaCLIError("缺少 submit_id，无法查询结果")
+
+        raise DreaminaCLIError(f"未知状态: {result.get('gen_status')}")
+
+    except json.JSONDecodeError as e:
+        raise DreaminaCLIError(f"解析输出失败: {e}")
     except asyncio.TimeoutError:
         process.kill()
-        raise JimengCLIError(f"即梦 CLI 调用超时 ({timeout}秒)")
+        raise DreaminaCLIError(f"Dreamina CLI 调用超时 ({timeout}秒)")
     except FileNotFoundError:
-        raise JimengCLIError(f"即梦 CLI 未安装或路径错误: {cli_path}")
+        raise DreaminaCLIError(f"Dreamina CLI 未安装或路径错误: {cli_path}")
     except Exception as e:
-        raise JimengCLIError(f"即梦 CLI 调用异常: {str(e)}")
+        raise DreaminaCLIError(f"Dreamina CLI 调用异常: {str(e)}")
 
 
-async def test_jimeng_cli() -> bool:
-    """测试即梦 CLI 是否可用"""
-    config = await get_jimeng_config()
+async def download_result_image(cli_path: str, submit_id: str, output_dir: Path, poll_timeout: int = 60) -> str:
+    """使用 query_result 下载图片"""
+    cmd = [
+        cli_path,
+        "query_result",
+        f"--submit_id={submit_id}",
+        f"--download_dir={str(output_dir)}",
+    ]
+
+    process = await asyncio.create_subprocess_exec(
+        *cmd,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+
+    stdout, stderr = await asyncio.wait_for(
+        process.communicate(),
+        timeout=poll_timeout + 10
+    )
+
+    if process.returncode != 0:
+        error_msg = stderr.decode("utf-8", errors="ignore") if stderr else "未知错误"
+        raise DreaminaCLIError(f"下载图片失败: {error_msg}")
+
+    # 解析输出获取图片路径
+    output = stdout.decode("utf-8", errors="ignore")
+    result = json.loads(output)
+
+    if result.get("gen_status") == "success":
+        images = result.get("result_json", {}).get("images", [])
+        if images and images[0].get("path"):
+            return images[0]["path"]
+        raise DreaminaCLIError("未找到图片路径")
+
+    if result.get("gen_status") == "fail":
+        fail_reason = result.get("fail_reason") or "未知原因"
+        raise DreaminaCLIError(f"下载失败: {fail_reason}")
+
+    # 在 download_dir 中查找图片文件
+    for ext in ["png", "jpg", "jpeg", "webp"]:
+        files = list(output_dir.glob(f"*.{ext}"))
+        if files:
+            return str(files[0])
+
+    raise DreaminaCLIError("未找到下载的图片文件")
+
+
+async def test_dreamina_cli() -> bool:
+    """测试 Dreamina CLI 是否可用"""
+    config = await get_dreamina_config()
     cli_path = config["cli_path"]
 
     try:
         process = await asyncio.create_subprocess_exec(
             cli_path,
-            "--version",
+            "version",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await process.communicate()
+        return process.returncode == 0
+    except FileNotFoundError:
+        return False
+
+
+async def check_login_status() -> bool:
+    """检查登录状态"""
+    config = await get_dreamina_config()
+    cli_path = config["cli_path"]
+
+    try:
+        process = await asyncio.create_subprocess_exec(
+            cli_path,
+            "user_credit",
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
