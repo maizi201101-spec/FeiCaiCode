@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import EpisodeDrawer from './EpisodeDrawer'
+import EpisodeSelector from './EpisodeSelector'
 
 const TABS = ['资产库', '分镜规划', '装配与生成', '质检与确认'] as const
 
@@ -15,6 +17,9 @@ export default function WorkbenchLayout({
   onTabChange,
 }: WorkbenchLayoutProps) {
   const { projectId } = useParams()
+  const projectIdNum = Number(projectId)
+  const [currentEpisodeId, setCurrentEpisodeId] = useState<number | null>(null)
+  const [drawerOpen, setDrawerOpen] = useState(false)
 
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100 flex flex-col">
@@ -27,11 +32,24 @@ export default function WorkbenchLayout({
           ← 项目列表
         </Link>
         <span className="text-gray-600">|</span>
-        <span className="text-sm font-medium">项目 #{projectId}</span>
+        <button
+          onClick={() => setDrawerOpen((o) => !o)}
+          className="text-sm font-medium hover:text-gray-300 transition-colors"
+        >
+          项目 #{projectId}
+        </button>
         <span className="text-gray-600">|</span>
-        <select className="bg-gray-900 border border-gray-700 text-sm rounded px-2 py-1 text-gray-300">
-          <option>EP01</option>
-        </select>
+        {projectIdNum ? (
+          <EpisodeSelector
+            projectId={projectIdNum}
+            currentEpisodeId={currentEpisodeId}
+            onEpisodeChange={setCurrentEpisodeId}
+          />
+        ) : (
+          <select className="bg-gray-900 border border-gray-700 text-sm rounded px-2 py-1 text-gray-300">
+            <option>EP01</option>
+          </select>
+        )}
         <div className="flex gap-1 ml-2">
           {TABS.map((tab, i) => (
             <button
@@ -58,8 +76,13 @@ export default function WorkbenchLayout({
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* 左侧集数抽屉（占位） */}
-        <aside className="w-0 border-r border-gray-800 overflow-hidden transition-all" />
+        {/* 左侧集数抽屉 */}
+        <EpisodeDrawer
+          projectId={projectIdNum}
+          currentEpisodeId={currentEpisodeId}
+          onEpisodeChange={setCurrentEpisodeId}
+          open={drawerOpen}
+        />
 
         {/* 主工作区 */}
         <main className="flex-1 overflow-auto">{children}</main>
