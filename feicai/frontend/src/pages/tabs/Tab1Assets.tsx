@@ -106,6 +106,7 @@ export default function Tab1Assets({ projectId, episodeId }: Tab1AssetsProps) {
       <div className="flex-1 overflow-auto">
         <AssetGrid
           assets={assets}
+          projectId={projectId}
           onUpdate={editAsset}
           onDelete={deleteAsset}
           onAddClick={() => setShowAddModal(true)}

@@ -3,12 +3,13 @@ import AssetCard from './AssetCard'
 
 interface AssetGridProps {
   assets: Asset[]
+  projectId: number
   onUpdate: (assetType: AssetType, assetId: string, payload: AssetUpdatePayload) => Promise<Asset>
   onDelete: (assetType: AssetType, assetId: string) => Promise<void>
   onAddClick: () => void
 }
 
-export default function AssetGrid({ assets, onUpdate, onDelete, onAddClick }: AssetGridProps) {
+export default function AssetGrid({ assets, projectId, onUpdate, onDelete, onAddClick }: AssetGridProps) {
   if (assets.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-gray-600">
@@ -30,6 +31,7 @@ export default function AssetGrid({ assets, onUpdate, onDelete, onAddClick }: As
         <AssetCard
           key={`${asset.asset_type}-${asset.asset_id}`}
           asset={asset}
+          projectId={projectId}
           onUpdate={onUpdate}
           onDelete={onDelete}
         />
