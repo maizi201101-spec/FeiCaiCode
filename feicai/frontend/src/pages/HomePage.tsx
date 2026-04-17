@@ -14,7 +14,7 @@ export default function HomePage() {
     if (!formName.trim() || !formPath.trim()) return
     setCreating(true)
     try {
-      const project = await createProject(formName.trim(), formPath.trim())
+      const project = await createProject({ name: formName.trim(), path: formPath.trim() })
       setShowModal(false)
       setFormName('')
       setFormPath('')

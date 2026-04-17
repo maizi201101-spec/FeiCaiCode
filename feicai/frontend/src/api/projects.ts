@@ -6,6 +6,7 @@ export interface Project {
   path: string
   created_at: string
   updated_at: string
+  episode_count?: number
 }
 
 export interface Episode {

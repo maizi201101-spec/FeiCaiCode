@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useProjects } from '../../hooks/useProjects'
+import { useEpisodes } from '../../hooks/useProjects'
 
 interface EpisodeSelectorProps {
   projectId: number
@@ -12,16 +12,16 @@ export default function EpisodeSelector({
   currentEpisodeId,
   onEpisodeChange,
 }: EpisodeSelectorProps) {
-  const { episodes, fetchEpisodes, createEpisode } = useProjects()
+  const { episodes, refetch, createEpisode } = useEpisodes(projectId)
 
   useEffect(() => {
-    fetchEpisodes(projectId)
+    refetch()
   }, [projectId])
 
   const handleAddEpisode = async () => {
     const next = episodes.length + 1
-    await createEpisode(projectId, next)
-    await fetchEpisodes(projectId)
+    await createEpisode({ number: next })
+    await refetch()
   }
 
   return (
@@ -34,7 +34,7 @@ export default function EpisodeSelector({
         <option value="" disabled>
           选择集数
         </option>
-        {episodes.map((ep) => (
+        {episodes.map((ep: { id: number; number: number; title: string | null }) => (
           <option key={ep.id} value={ep.id}>
             EP{String(ep.number).padStart(2, '0')}
             {ep.title ? ` · ${ep.title}` : ''}
