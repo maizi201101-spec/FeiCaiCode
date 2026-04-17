@@ -12,6 +12,8 @@ from services.script_service import get_episode_info, get_project_path
 
 DB_PATH = Path(__file__).parent.parent / "feicai.db"
 
+VALID_ASSET_TYPES = {"character", "scene", "prop"}
+
 
 async def get_assets_path(project_id: int) -> Optional[Path]:
     """获取项目 assets.json 文件路径"""
@@ -342,3 +344,174 @@ async def delete_asset(
 
     await write_assets(project_id, assets)
     return True
+
+
+async def get_asset_images_dir(project_id: int, asset_type: str) -> Optional[Path]:
+    """获取资产图片目录路径"""
+    project_path = await get_project_path(project_id)
+    if not project_path:
+        return None
+    return Path(project_path) / "assets" / asset_type
+
+
+async def get_asset_images(
+    project_id: int, asset_type: str, asset_id: str
+) -> List[str]:
+    """获取资产图片路径列表"""
+    if asset_type not in VALID_ASSET_TYPES:
+        raise ValueError(f"无效的资产类型: {asset_type}")
+
+    assets = await read_assets(project_id)
+
+    if asset_type == "character":
+        for char in assets.characters:
+            if char.asset_id == asset_id:
+                return char.images
+    elif asset_type == "scene":
+        for scene in assets.scenes:
+            if scene.asset_id == asset_id:
+                return scene.images
+    elif asset_type == "prop":
+        for prop in assets.props:
+            if prop.asset_id == asset_id:
+                return prop.images
+
+    return []
+
+
+async def add_image_to_asset(
+    project_id: int, asset_type: str, asset_id: str, image_path: str
+) -> int:
+    """添加图片到资产，返回图片索引（从 1 开始）"""
+    if asset_type not in VALID_ASSET_TYPES:
+        raise ValueError(f"无效的资产类型: {asset_type}")
+
+    assets = await read_assets(project_id)
+
+    if asset_type == "character":
+        for char in assets.characters:
+            if char.asset_id == asset_id:
+                char.images.append(image_path)
+                await write_assets(project_id, assets)
+                return len(char.images)
+    elif asset_type == "scene":
+        for scene in assets.scenes:
+            if scene.asset_id == asset_id:
+                scene.images.append(image_path)
+                await write_assets(project_id, assets)
+                return len(scene.images)
+    elif asset_type == "prop":
+        for prop in assets.props:
+            if prop.asset_id == asset_id:
+                prop.images.append(image_path)
+                await write_assets(project_id, assets)
+                return len(prop.images)
+
+    raise ValueError(f"资产不存在: {asset_type}/{asset_id}")
+
+
+async def remove_image_from_asset(
+    project_id: int, asset_type: str, asset_id: str, image_index: int
+) -> bool:
+    """删除资产图片（索引从 1 开始）"""
+    if asset_type not in VALID_ASSET_TYPES:
+        raise ValueError(f"无效的资产类型: {asset_type}")
+
+    assets = await read_assets(project_id)
+
+    idx = image_index - 1  # 转换为 0 基索引
+
+    if asset_type == "character":
+        for char in assets.characters:
+            if char.asset_id == asset_id:
+                if 0 <= idx < len(char.images):
+                    char.images.pop(idx)
+                    await write_assets(project_id, assets)
+                    return True
+                return False
+    elif asset_type == "scene":
+        for scene in assets.scenes:
+            if scene.asset_id == asset_id:
+                if 0 <= idx < len(scene.images):
+                    scene.images.pop(idx)
+                    await write_assets(project_id, assets)
+                    return True
+                return False
+    elif asset_type == "prop":
+        for prop in assets.props:
+            if prop.asset_id == asset_id:
+                if 0 <= idx < len(prop.images):
+                    prop.images.pop(idx)
+                    await write_assets(project_id, assets)
+                    return True
+                return False
+
+    return False
+
+
+async def set_primary_image(
+    project_id: int, asset_type: str, asset_id: str, image_index: int
+) -> bool:
+    """设置主图（将指定索引的图片移到第一位）"""
+    if asset_type not in VALID_ASSET_TYPES:
+        raise ValueError(f"无效的资产类型: {asset_type}")
+
+    assets = await read_assets(project_id)
+
+    idx = image_index - 1  # 转换为 0 基索引
+
+    if asset_type == "character":
+        for char in assets.characters:
+            if char.asset_id == asset_id:
+                if 0 <= idx < len(char.images):
+                    # 将指定图片移到第一位
+                    primary = char.images.pop(idx)
+                    char.images.insert(0, primary)
+                    await write_assets(project_id, assets)
+                    return True
+                return False
+    elif asset_type == "scene":
+        for scene in assets.scenes:
+            if scene.asset_id == asset_id:
+                if 0 <= idx < len(scene.images):
+                    primary = scene.images.pop(idx)
+                    scene.images.insert(0, primary)
+                    await write_assets(project_id, assets)
+                    return True
+                return False
+    elif asset_type == "prop":
+        for prop in assets.props:
+            if prop.asset_id == asset_id:
+                if 0 <= idx < len(prop.images):
+                    primary = prop.images.pop(idx)
+                    prop.images.insert(0, primary)
+                    await write_assets(project_id, assets)
+                    return True
+                return False
+
+    return False
+
+
+async def get_asset_detail(
+    project_id: int, asset_type: str, asset_id: str
+) -> Optional[dict]:
+    """获取单个资产详情"""
+    if asset_type not in VALID_ASSET_TYPES:
+        raise ValueError(f"无效的资产类型: {asset_type}")
+
+    assets = await read_assets(project_id)
+
+    if asset_type == "character":
+        for char in assets.characters:
+            if char.asset_id == asset_id:
+                return char.model_dump()
+    elif asset_type == "scene":
+        for scene in assets.scenes:
+            if scene.asset_id == asset_id:
+                return scene.model_dump()
+    elif asset_type == "prop":
+        for prop in assets.props:
+            if prop.asset_id == asset_id:
+                return prop.model_dump()
+
+    return None
