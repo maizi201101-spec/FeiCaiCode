@@ -40,6 +40,29 @@ CREATE TABLE IF NOT EXISTS tasks (
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS video_versions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    shot_id TEXT NOT NULL,
+    episode_id INTEGER NOT NULL REFERENCES episodes(id) ON DELETE CASCADE,
+    group_id TEXT NOT NULL,
+    version_number INTEGER NOT NULL DEFAULT 1,
+    status TEXT NOT NULL DEFAULT 'pending',
+    video_prompt TEXT NOT NULL,
+    final_prompt TEXT,
+    reference_images TEXT,
+    anchor_declaration TEXT,
+    model TEXT DEFAULT 'seedance2.0',
+    duration INTEGER DEFAULT 4,
+    resolution TEXT DEFAULT '1080p',
+    video_path TEXT,
+    submit_id TEXT,
+    qc_status TEXT DEFAULT 'pending',
+    selected BOOLEAN DEFAULT FALSE,
+    error_message TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
 """
 
 async def init_db():

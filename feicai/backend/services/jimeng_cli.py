@@ -264,3 +264,163 @@ async def check_login_status() -> bool:
         return process.returncode == 0
     except FileNotFoundError:
         return False
+
+
+async def generate_video(
+    prompt: str,
+    output_path: Path,
+    reference_images: list[str] = [],
+    anchor_declaration: str = "",
+    model: str = "seedance2.0",
+    duration: int = 4,
+    resolution: str = "1080p",
+    timeout: int = 300,
+) -> str:
+    """
+    调用 Dreamina CLI 生成视频
+
+    Args:
+        prompt: 视频生成提示词（拼接后的完整提示词）
+        output_path: 输出文件路径（完整路径，包含文件名）
+        reference_images: 参考图路径列表（人物→场景→道具顺序）
+        anchor_declaration: 锚定声明文本（如"图1是张三，图2是办公室"）
+        model: 视频模型名称
+        duration: 视频时长（秒）
+        resolution: 分辨率
+        timeout: 超时时间（秒）
+
+    Returns:
+        生成的视频文件路径
+
+    Raises:
+        DreaminaCLIError: CLI 调用失败
+    """
+    config = await get_dreamina_config()
+    cli_path = config["cli_path"]
+
+    # 确保输出目录存在
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # 检查 CLI
+    if not Path(cli_path).exists():
+        cli_in_path = shutil.which("dreamina")
+        if cli_in_path:
+            cli_path = cli_in_path
+        else:
+            raise DreaminaCLIError(f"Dreamina CLI 未安装或路径错误: {cli_path}")
+
+    # 构造 CLI 命令
+    cmd = [
+        cli_path,
+        "text2video",
+        f"--prompt={prompt}",
+        f"--poll={timeout}",
+        f"--model={model}",
+        f"--duration={duration}",
+        f"--resolution={resolution}",
+        f"--download_dir={str(output_path.parent)}",
+        f"--filename={output_path.name}",
+    ]
+
+    # 添加参考图参数
+    for img_path in reference_images:
+        if Path(img_path).exists():
+            cmd.extend(["--ref_image", img_path])
+
+    # 添加锚定声明
+    if anchor_declaration:
+        cmd.append(f"--anchor={anchor_declaration}")
+
+    try:
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+
+        stdout, stderr = await asyncio.wait_for(
+            process.communicate(),
+            timeout=timeout + 60
+        )
+
+        if process.returncode != 0:
+            error_msg = stderr.decode("utf-8", errors="ignore") if stderr else "未知错误"
+            raise DreaminaCLIError(f"视频生成失败 (code {process.returncode}): {error_msg}")
+
+        # 解析输出
+        output = stdout.decode("utf-8", errors="ignore")
+        result = json.loads(output)
+
+        if result.get("gen_status") == "success":
+            videos = result.get("result_json", {}).get("videos", [])
+            if videos and videos[0].get("path"):
+                return videos[0]["path"]
+            # 尝试从指定路径获取
+            if output_path.exists():
+                return str(output_path)
+            raise DreaminaCLIError("未找到视频路径")
+
+        if result.get("gen_status") == "fail":
+            fail_reason = result.get("fail_reason") or "未知原因"
+            raise DreaminaCLIError(f"视频生成失败: {fail_reason}")
+
+        if result.get("gen_status") == "querying":
+            submit_id = result.get("submit_id")
+            if submit_id:
+                return await download_result_video(cli_path, submit_id, output_path, poll_timeout=timeout)
+            raise DreaminaCLIError("缺少 submit_id，无法查询结果")
+
+        raise DreaminaCLIError(f"未知状态: {result.get('gen_status')}")
+
+    except json.JSONDecodeError as e:
+        raise DreaminaCLIError(f"解析输出失败: {e}")
+    except asyncio.TimeoutError:
+        process.kill()
+        raise DreaminaCLIError(f"视频生成超时 ({timeout}秒)")
+    except FileNotFoundError:
+        raise DreaminaCLIError(f"Dreamina CLI 未安装或路径错误: {cli_path}")
+    except Exception as e:
+        raise DreaminaCLIError(f"视频生成异常: {str(e)}")
+
+
+async def download_result_video(cli_path: str, submit_id: str, output_path: Path, poll_timeout: int = 120) -> str:
+    """使用 query_result 下载视频"""
+    cmd = [
+        cli_path,
+        "query_result",
+        f"--submit_id={submit_id}",
+        f"--download_dir={str(output_path.parent)}",
+        f"--filename={output_path.name}",
+    ]
+
+    process = await asyncio.create_subprocess_exec(
+        *cmd,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+
+    stdout, stderr = await asyncio.wait_for(
+        process.communicate(),
+        timeout=poll_timeout + 30
+    )
+
+    if process.returncode != 0:
+        error_msg = stderr.decode("utf-8", errors="ignore") if stderr else "未知错误"
+        raise DreaminaCLIError(f"下载视频失败: {error_msg}")
+
+    output = stdout.decode("utf-8", errors="ignore")
+    result = json.loads(output)
+
+    if result.get("gen_status") == "success":
+        videos = result.get("result_json", {}).get("videos", [])
+        if videos and videos[0].get("path"):
+            return videos[0]["path"]
+        if output_path.exists():
+            return str(output_path)
+        raise DreaminaCLIError("未找到视频路径")
+
+    if result.get("gen_status") == "fail":
+        fail_reason = result.get("fail_reason") or "未知原因"
+        raise DreaminaCLIError(f"下载视频失败: {fail_reason}")
+
+    raise DreaminaCLIError("未找到下载的视频文件")
