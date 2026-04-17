@@ -157,3 +157,130 @@ export async function extractAssets(
   }
   return res.json()
 }
+
+// ========== 图片管理 API ==========
+
+export interface AssetImage {
+  index: number
+  path: string
+  exists: boolean
+  is_primary: boolean
+}
+
+export interface UploadResult {
+  message: string
+  image_index: number
+  image_path: string
+}
+
+export interface GenerateResult {
+  task_id: number
+  status: string
+  message: string
+}
+
+export interface TaskStatus {
+  id: number
+  project_id: number
+  episode_id: number | null
+  type: string
+  status: string
+  payload: Record<string, unknown>
+  result: string | null
+  error: string | null
+  created_at: string
+  updated_at: string
+}
+
+export async function uploadAssetImage(
+  projectId: number,
+  assetType: AssetType,
+  assetId: string,
+  file: File
+): Promise<UploadResult> {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  const res = await fetch(
+    `${BASE}/projects/${projectId}/assets/${assetType}/${assetId}/images/upload`,
+    {
+      method: 'POST',
+      body: formData,
+    }
+  )
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || '上传图片失败')
+  }
+  return res.json()
+}
+
+export async function generateAssetImage(
+  projectId: number,
+  assetType: AssetType,
+  assetId: string
+): Promise<GenerateResult> {
+  const res = await fetch(
+    `${BASE}/projects/${projectId}/assets/${assetType}/${assetId}/images/generate`,
+    { method: 'POST' }
+  )
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || 'AI 生图失败')
+  }
+  return res.json()
+}
+
+export async function getAssetImages(
+  projectId: number,
+  assetType: AssetType,
+  assetId: string
+): Promise<{ images: AssetImage[]; total: number }> {
+  const res = await fetch(
+    `${BASE}/projects/${projectId}/assets/${assetType}/${assetId}/images`
+  )
+  if (!res.ok) throw new Error('获取图片列表失败')
+  return res.json()
+}
+
+export async function deleteAssetImage(
+  projectId: number,
+  assetType: AssetType,
+  assetId: string,
+  imageIndex: number
+): Promise<void> {
+  const res = await fetch(
+    `${BASE}/projects/${projectId}/assets/${assetType}/${assetId}/images/${imageIndex}`,
+    { method: 'DELETE' }
+  )
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || '删除图片失败')
+  }
+}
+
+export async function setPrimaryImage(
+  projectId: number,
+  assetType: AssetType,
+  assetId: string,
+  imageIndex: number
+): Promise<void> {
+  const res = await fetch(
+    `${BASE}/projects/${projectId}/assets/${assetType}/${assetId}/images/${imageIndex}/primary`,
+    { method: 'PUT' }
+  )
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || '设置主图失败')
+  }
+}
+
+export async function getTaskStatus(taskId: number): Promise<TaskStatus> {
+  const res = await fetch(`${BASE}/tasks/${taskId}`)
+  if (!res.ok) throw new Error('获取任务状态失败')
+  return res.json()
+}
+
+export function getImageUrl(projectId: number, assetType: AssetType, assetId: string, imageIndex: number): string {
+  return `${BASE}/projects/${projectId}/assets/${assetType}/${assetId}/images/${imageIndex}/file`
+}
