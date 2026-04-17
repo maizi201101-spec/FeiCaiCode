@@ -4,6 +4,7 @@
 """
 
 from fastapi import APIRouter, HTTPException, BackgroundTasks
+from pathlib import Path
 from typing import List
 
 from schemas.video_schema import (

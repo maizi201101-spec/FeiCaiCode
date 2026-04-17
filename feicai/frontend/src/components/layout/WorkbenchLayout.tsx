@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import EpisodeDrawer from './EpisodeDrawer'
 import EpisodeSelector from './EpisodeSelector'
+import TaskIndicator from './TaskIndicator'
 import { useEpisodes } from '../../hooks/useProjects'
 
 const TABS = ['资产库', '分镜规划', '装配与生成', '质检与确认'] as const
@@ -86,9 +87,7 @@ export default function WorkbenchLayout({
           ))}
         </div>
         <div className="ml-auto flex items-center gap-3">
-          <button className="text-sm text-gray-400 hover:text-gray-200">
-            任务 ●0
-          </button>
+          {projectIdNum && <TaskIndicator projectId={projectIdNum} />}
           <button className="text-sm text-gray-400 hover:text-gray-200">
             ⚙ 设置
           </button>

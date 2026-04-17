@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useRef } from 'react'
 import { type Shot } from '../../api/shots'
 import { type Prompt, type SpecialPrompt } from '../../api/prompts'
 import { type Asset } from '../../api/assets'
