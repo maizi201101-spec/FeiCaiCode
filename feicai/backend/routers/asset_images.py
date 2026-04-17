@@ -22,7 +22,7 @@ from services.asset_service import (
     write_assets,
 )
 from services.task_service import create_task, get_task, update_task_status
-from services.jimeng_cli import generate_image, build_prompt_from_asset, JimengCLIError
+from services.jimeng_cli import generate_image, build_prompt_from_asset, DreaminaCLIError
 from services.script_service import get_project_path
 
 router = APIRouter(tags=["asset_images"])
@@ -112,13 +112,12 @@ async def generate_asset_image(
     current_images = await get_asset_images(project_id, asset_type.value, asset_id)
     new_index = len(current_images) + 1
 
-    # 构造输出路径
+    # 构造输出目录（不是文件路径）
     images_dir = await get_asset_images_dir(project_id, asset_type.value)
     if not images_dir:
         raise HTTPException(500, "无法获取图片目录")
 
     images_dir.mkdir(parents=True, exist_ok=True)
-    output_path = images_dir / f"{asset_id}_{new_index}.jpg"
 
     # 创建任务记录
     task_id = await create_task(
@@ -128,7 +127,7 @@ async def generate_asset_image(
             "asset_type": asset_type.value,
             "asset_id": asset_id,
             "prompt": prompt,
-            "output_path": str(output_path),
+            "images_dir": str(images_dir),
             "new_index": new_index,
         },
     )
@@ -141,7 +140,7 @@ async def generate_asset_image(
         asset_type.value,
         asset_id,
         prompt,
-        output_path,
+        images_dir,
         new_index,
     )
 
@@ -158,7 +157,7 @@ async def execute_image_generation(
     asset_type: str,
     asset_id: str,
     prompt: str,
-    output_path: Path,
+    images_dir: Path,
     new_index: int,
 ):
     """执行图片生成任务（后台任务）"""
@@ -166,8 +165,16 @@ async def execute_image_generation(
         # 更新任务状态为 processing
         await update_task_status(task_id, "processing")
 
-        # 调用即梦 CLI 生成图片
-        image_path = await generate_image(prompt, output_path)
+        # 调用 Dreamina CLI 生成图片（传入目录，不是文件路径）
+        downloaded_path = await generate_image(prompt, images_dir)
+
+        # 重命名图片到正确的文件名
+        downloaded_file = Path(downloaded_path)
+        target_filename = f"{asset_id}_{new_index}.jpg"
+        target_path = images_dir / target_filename
+
+        if downloaded_file.exists() and downloaded_file != target_path:
+            downloaded_file.rename(target_path)
 
         # 添加到资产记录
         relative_path = f"assets/{asset_type}/{asset_id}_{new_index}.jpg"
@@ -180,7 +187,7 @@ async def execute_image_generation(
             result=json.dumps({"image_path": relative_path, "image_index": new_index}),
         )
 
-    except JimengCLIError as e:
+    except DreaminaCLIError as e:
         await update_task_status(task_id, "failed", error=str(e))
     except Exception as e:
         await update_task_status(task_id, "failed", error=f"生成失败: {str(e)}")
