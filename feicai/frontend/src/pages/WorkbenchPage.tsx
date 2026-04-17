@@ -2,6 +2,7 @@ import { useState } from 'react'
 import WorkbenchLayout from '../components/layout/WorkbenchLayout'
 import ScriptPanel from '../components/tabs/ScriptPanel'
 import Tab1Assets from '../pages/tabs/Tab1Assets'
+import Tab2Storyboard from '../pages/tabs/Tab2Storyboard'
 
 const TABS = ['资产库', '分镜规划', '装配与生成', '质检与确认'] as const
 
@@ -28,6 +29,8 @@ export default function WorkbenchPage() {
           {/* Tab 内容 */}
           {activeTab === 0 ? (
             <Tab1Assets projectId={projectId} episodeId={episode?.id ?? null} />
+          ) : activeTab === 1 ? (
+            <Tab2Storyboard episodeId={episode?.id ?? null} />
           ) : (
             <div className="p-6">
               <p className="text-gray-500 text-sm">

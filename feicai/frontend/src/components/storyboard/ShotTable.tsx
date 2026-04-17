@@ -1,0 +1,91 @@
+import { type Shot, type ShotGroup, getDurationColor } from '../../api/shots'
+
+interface ShotTableProps {
+  shots: Shot[]
+  groups: ShotGroup[]
+  onEditShot: (shotId: string) => void
+}
+
+export default function ShotTable({ shots, groups, onEditShot }: ShotTableProps) {
+  // 获取组的颜色
+  const getGroupColor = (groupId: string) => {
+    const group = groups.find((g) => g.group_id === groupId)
+    if (!group) return 'gray'
+    return getDurationColor(group.total_duration)
+  }
+
+  // 台词摘要
+  const getSpeechSummary = (speech: Shot['speech']) => {
+    if (!speech || speech.length === 0) return '-'
+    return speech.map((s) => `${s.speaker}: ${s.text}`).join('; ')
+  }
+
+  return (
+    <table className="w-full border-collapse text-sm">
+      <thead className="bg-gray-50 sticky top-0">
+        <tr>
+          <th className="border px-2 py-1 text-left w-12">编号</th>
+          <th className="border px-2 py-1 text-left w-16">时段</th>
+          <th className="border px-2 py-1 text-left w-16">组</th>
+          <th className="border px-2 py-1 text-left w-12">类型</th>
+          <th className="border px-2 py-1 text-left w-12">景别</th>
+          <th className="border px-2 py-1 text-left w-16">运镜</th>
+          <th className="border px-2 py-1 text-left">画面内容</th>
+          <th className="border px-2 py-1 text-left">台词</th>
+          <th className="border px-2 py-1 text-left w-12">状态</th>
+          <th className="border px-2 py-1 text-left w-12">操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {shots.map((shot) => {
+          const groupColor = getGroupColor(shot.group_id)
+          const timeStr = `${shot.time_range.start_sec.toFixed(1)}-${shot.time_range.end_sec.toFixed(1)}s`
+          const speechSummary = getSpeechSummary(shot.speech)
+
+          return (
+            <tr
+              key={shot.shot_id}
+              className="hover:bg-blue-50 cursor-pointer"
+              onClick={() => onEditShot(shot.shot_id)}
+            >
+              <td className="border px-2 py-1">{shot.shot_id}</td>
+              <td className="border px-2 py-1">{timeStr}</td>
+              <td className="border px-2 py-1">
+                <span
+                  className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
+                    groupColor === 'green'
+                      ? 'bg-green-100 text-green-700'
+                      : groupColor === 'yellow'
+                      ? 'bg-yellow-100 text-yellow-700'
+                      : 'bg-red-100 text-red-700'
+                  }`}
+                >
+                  {shot.group_id}
+                </span>
+              </td>
+              <td className="border px-2 py-1">{shot.shot_type}</td>
+              <td className="border px-2 py-1">{shot.shot_size}</td>
+              <td className="border px-2 py-1">{shot.camera_move}</td>
+              <td className="border px-2 py-1 truncate max-w-xs">{shot.frame_action}</td>
+              <td className="border px-2 py-1 truncate max-w-xs">{speechSummary}</td>
+              <td className="border px-2 py-1">
+                <span className="text-gray-400">待生成</span>
+              </td>
+              <td className="border px-2 py-1">
+                <button
+                  className="text-blue-500 hover:underline"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onEditShot(shot.shot_id)
+                  }}
+                >
+                  编辑
+                </button>
+              </td>
+            </tr>
+          )
+        })}
+      </tbody>
+    </table>
+  )
+}
