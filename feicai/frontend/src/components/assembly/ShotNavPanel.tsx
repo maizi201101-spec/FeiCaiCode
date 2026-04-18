@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { type Shot } from '../../api/shots'
 import { type Prompt } from '../../api/prompts'
 
@@ -7,8 +7,11 @@ interface ShotNavPanelProps {
   prompts: Prompt[]
   currentShotId: string | null
   onSelectShot: (shotId: string, groupId: string) => void
-  // Tab4 返修状态（Phase 9 预留）
+  // Tab4 返修状态
   revisionShotIds?: string[]
+  // Tab4 跳转定位
+  focusGroupId?: string | null
+  onFocusHandled?: () => void
 }
 
 // 状态颜色：绿=合格, 橙=待审, 红=返修, 灰=未生成
@@ -59,11 +62,34 @@ export default function ShotNavPanel({
   currentShotId,
   onSelectShot,
   revisionShotIds = [],
+  focusGroupId = null,
+  onFocusHandled,
 }: ShotNavPanelProps) {
   // 折叠状态
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
     new Set(shots.map(s => s.group_id))
   )
+
+  // 处理 focusGroupId 定位（从 Tab4 跳转）
+  useEffect(() => {
+    if (focusGroupId) {
+      // 确保该组展开
+      setExpandedGroups(prev => {
+        const next = new Set(prev)
+        next.add(focusGroupId)
+        return next
+      })
+      // 定位到该组第一个镜头
+      const firstShot = shots.find(s => s.group_id === focusGroupId)
+      if (firstShot) {
+        onSelectShot(firstShot.shot_id, focusGroupId)
+      }
+      // 通知父组件定位完成
+      if (onFocusHandled) {
+        onFocusHandled()
+      }
+    }
+  }, [focusGroupId, shots, onSelectShot, onFocusHandled])
 
   // 按 group_id 分组
   const groups = shots.reduce<Record<string, Shot[]>>((acc, shot) => {

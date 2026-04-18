@@ -26,7 +26,7 @@ interface CentralWorkAreaProps {
   currentGroupId: string | null
   shotIds: string[]
   videoVersions?: VideoVersion[]
-  currentVersionId?: number | null
+  currentVersionId?: number | null | undefined
   onSelectVersion?: (versionId: number) => void
   onMarkApproved?: (versionId: number) => void
   onMarkRejected?: (versionId: number) => void
@@ -67,11 +67,7 @@ export default function CentralWorkArea({
 
   // 当前镜头引用的资产 ID
   const referencedAssetIds = currentShot.assets || []
-  const referencedChars = referencedAssetIds.filter(a => a.startsWith('人物'))
-  const referencedScenes = referencedAssetIds.filter(a => a.startsWith('场景'))
-  const referencedProps = referencedAssetIds.filter(a => a.startsWith('道具'))
-
-  // 判断是否被引用
+  // 判断是否被引用（使用 referencedAssetIds）
   const isReferenced = (assetId: string) => referencedAssetIds.includes(assetId)
 
   // 获取作用范围的目标 IDs
@@ -235,7 +231,7 @@ export default function CentralWorkArea({
             {/* 版本标签 */}
             <VideoVersionTabs
               versions={videoVersions}
-              currentVersionId={currentVersionId}
+              currentVersionId={currentVersionId ?? null}
               onSelectVersion={onSelectVersion || (() => {})}
               onMarkApproved={onMarkApproved || (() => {})}
               onMarkRejected={onMarkRejected || (() => {})}

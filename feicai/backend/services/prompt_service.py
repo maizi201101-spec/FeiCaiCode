@@ -313,6 +313,18 @@ async def get_global_settings(project_id: int) -> GlobalSettings:
                 settings.default_resolution = value
             elif setting_name == "default_ratio":
                 settings.default_ratio = value
+            elif setting_name == "llm_api_key":
+                settings.llm_api_key = value
+            elif setting_name == "llm_base_url":
+                settings.llm_base_url = value
+            elif setting_name == "llm_model":
+                settings.llm_model = value
+            elif setting_name == "jimeng_cli_path":
+                settings.jimeng_cli_path = value
+            elif setting_name == "default_image_model":
+                settings.default_image_model = value
+            elif setting_name == "default_image_size":
+                settings.default_image_size = value
 
     return settings
 
@@ -328,6 +340,12 @@ async def update_global_settings(project_id: int, settings: GlobalSettings) -> N
             ("default_duration", str(settings.default_duration)),
             ("default_resolution", settings.default_resolution),
             ("default_ratio", settings.default_ratio),
+            ("llm_api_key", settings.llm_api_key),
+            ("llm_base_url", settings.llm_base_url),
+            ("llm_model", settings.llm_model),
+            ("jimeng_cli_path", settings.jimeng_cli_path),
+            ("default_image_model", settings.default_image_model),
+            ("default_image_size", settings.default_image_size),
         ]:
             key = f"project_{project_id}_{setting_name}"
             await db.execute(

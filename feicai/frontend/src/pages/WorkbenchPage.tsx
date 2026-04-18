@@ -4,8 +4,7 @@ import ScriptPanel from '../components/tabs/ScriptPanel'
 import Tab1Assets from '../pages/tabs/Tab1Assets'
 import Tab2Storyboard from '../pages/tabs/Tab2Storyboard'
 import Tab3Assembly from '../pages/tabs/Tab3Assembly'
-
-const TABS = ['资产库', '分镜规划', '装配与生成', '质检与确认'] as const
+import Tab4QC from '../pages/tabs/Tab4QC'
 
 interface EpisodeInfo {
   id: number
@@ -15,6 +14,17 @@ interface EpisodeInfo {
 export default function WorkbenchPage() {
   const [activeTab, setActiveTab] = useState(0)
   const projectId = Number(window.location.pathname.split('/')[2])
+
+  // Tab3↔Tab4 双向联动状态
+  const [revisionShotIds, setRevisionShotIds] = useState<string[]>([])
+  const [focusGroupId, setFocusGroupId] = useState<string | null>(null)
+
+  // 处理 Tab4 点击「去修改」跳转到 Tab3
+  const handleGoToTab3 = (groupId: string) => {
+    setFocusGroupId(groupId)
+    setActiveTab(2) // 切换到 Tab 3
+    // 清除 focusGroupId 需要在 Tab3 定位后执行（由 Tab3 控制）
+  }
 
   return (
     <WorkbenchLayout activeTab={activeTab} onTabChange={setActiveTab}>
@@ -34,18 +44,31 @@ export default function WorkbenchPage() {
             <Tab2Storyboard episodeId={episode?.id ?? null} />
           ) : activeTab === 2 ? (
             episode ? (
-              <Tab3Assembly episodeId={episode.id} projectId={projectId} />
+              <Tab3Assembly
+                episodeId={episode.id}
+                projectId={projectId}
+                revisionShotIds={revisionShotIds}
+                focusGroupId={focusGroupId}
+                onFocusHandled={() => setFocusGroupId(null)}
+              />
             ) : (
               <div className="flex h-full items-center justify-center text-gray-400">
                 请先选择集数
               </div>
             )
           ) : (
-            <div className="p-6">
-              <p className="text-gray-500 text-sm">
-                Tab {activeTab + 1}：{TABS[activeTab]}（开发中）
-              </p>
-            </div>
+            episode ? (
+              <Tab4QC
+                episodeId={episode.id}
+                projectId={projectId}
+                onGoToTab3={handleGoToTab3}
+                onRevisionShotIdsChange={setRevisionShotIds}
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center text-gray-400">
+                请先选择集数
+              </div>
+            )
           )}
         </>
       )}

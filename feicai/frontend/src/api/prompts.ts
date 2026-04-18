@@ -28,6 +28,15 @@ export interface GlobalSettings {
   default_duration: number
   default_resolution: string
   default_ratio: string
+  // LLM 配置
+  llm_api_key: string
+  llm_base_url: string
+  llm_model: string
+  // 即梦 CLI 配置
+  jimeng_cli_path: string
+  // 图片生成默认参数
+  default_image_model: string
+  default_image_size: string
 }
 
 export interface SpecialPrompt {

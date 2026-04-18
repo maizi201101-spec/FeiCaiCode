@@ -33,11 +33,26 @@ class PromptUpdate(BaseModel):
 
 class GlobalSettings(BaseModel):
     """项目全局设置"""
-    global_prompt: str = ""     # 第1块全局提示词
+    # 第1块全局提示词
+    global_prompt: str = ""
+
+    # 视频生成默认参数
     default_model: str = "seedance2.0"
     default_duration: int = 4
     default_resolution: str = "1080p"
     default_ratio: str = "9:16"
+
+    # LLM 配置
+    llm_api_key: str = ""
+    llm_base_url: str = "https://api.openai.com/v1"
+    llm_model: str = "gpt-4"
+
+    # 即梦 CLI 配置
+    jimeng_cli_path: str = ""
+
+    # 图片生成默认参数
+    default_image_model: str = "dall-e-3"
+    default_image_size: str = "1024x1024"
 
 
 class SpecialPrompt(BaseModel):

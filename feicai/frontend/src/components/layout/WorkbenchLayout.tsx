@@ -88,9 +88,12 @@ export default function WorkbenchLayout({
         </div>
         <div className="ml-auto flex items-center gap-3">
           {projectIdNum && <TaskIndicator projectId={projectIdNum} />}
-          <button className="text-sm text-gray-400 hover:text-gray-200">
+          <Link
+            to={`/project/${projectId}/settings`}
+            className="text-sm text-gray-400 hover:text-gray-200"
+          >
             ⚙ 设置
-          </button>
+          </Link>
         </div>
       </header>
 

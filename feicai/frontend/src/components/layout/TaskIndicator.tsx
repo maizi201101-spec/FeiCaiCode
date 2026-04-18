@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { type TaskStatus, getTaskStatus } from '../../api/assets'
+import { type TaskStatus } from '../../api/assets'
 
 interface TaskIndicatorProps {
   projectId: number

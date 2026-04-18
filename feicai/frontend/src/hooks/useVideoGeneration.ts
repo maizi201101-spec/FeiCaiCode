@@ -1,6 +1,5 @@
 import { useState, useCallback } from 'react'
 import { type VideoVersion, type VideoGenerationRequest, getVideoVersions, generateVideo, updateVideoStatus, selectVideoVersion } from '../api/videos'
-import { pollTaskStatus } from './useTaskPolling'
 
 export function useVideoGeneration(episodeId: number | null) {
   const [versions, setVersions] = useState<VideoVersion[]>([])
@@ -32,10 +31,8 @@ export function useVideoGeneration(episodeId: number | null) {
     setError(null)
 
     try {
-      const { version_id } = await generateVideo(episodeId, request)
+      await generateVideo(episodeId, request)
 
-      // 轮询任务状态（通过 tasks API）
-      // 视频生成任务使用 version_id 作为标识，状态通过 video_versions 表查询
       // 等待一段时间后刷新版本列表
       await new Promise(resolve => setTimeout(resolve, 30000)) // 简化：等待 30 秒后刷新
 

@@ -12,13 +12,16 @@ import ParamsPanel from '../../components/assembly/ParamsPanel'
 interface Tab3AssemblyProps {
   episodeId: number
   projectId: number
+  revisionShotIds?: string[]
+  focusGroupId?: string | null
+  onFocusHandled?: () => void
 }
 
-export default function Tab3Assembly({ episodeId, projectId }: Tab3AssemblyProps) {
+export default function Tab3Assembly({ episodeId, projectId, revisionShotIds = [], focusGroupId = null, onFocusHandled }: Tab3AssemblyProps) {
   const [globalPrompt, setGlobalPrompt] = useState('')
 
   // Hooks
-  const { prompts, loading: promptsLoading, generating, error: promptsError, generatePrompts, editPrompt, confirmPrompt } = usePrompts(episodeId)
+  const { prompts, loading: promptsLoading, generating, generatePrompts, editPrompt, confirmPrompt } = usePrompts(episodeId)
   const { shotsCollection, loading: shotsLoading } = useShots(episodeId)
   const { allAssets, loading: assetsLoading } = useAssets(projectId)
   const { settings } = useGlobalSettings(projectId)
@@ -99,7 +102,15 @@ export default function Tab3Assembly({ episodeId, projectId }: Tab3AssemblyProps
   return (
     <div className="flex h-full gap-2 p-2">
       <div className="w-[15%] min-w-[180px] border rounded bg-white overflow-hidden">
-        <ShotNavPanel shots={shotsCollection?.shots || []} prompts={prompts} currentShotId={assembly.currentShotId} onSelectShot={assembly.selectShot} />
+        <ShotNavPanel
+          shots={shotsCollection?.shots || []}
+          prompts={prompts}
+          currentShotId={assembly.currentShotId}
+          onSelectShot={assembly.selectShot}
+          revisionShotIds={revisionShotIds}
+          focusGroupId={focusGroupId}
+          onFocusHandled={onFocusHandled}
+        />
       </div>
       <div className="w-[55%] border rounded bg-white overflow-hidden flex flex-col">
         <CentralWorkArea
@@ -132,7 +143,6 @@ export default function Tab3Assembly({ episodeId, projectId }: Tab3AssemblyProps
           globalPrompt={globalPrompt}
           finalVideoPrompt={finalVideoPrompt}
           currentShotId={assembly.currentShotId}
-          allAssets={allAssets}
           groupedAssets={groupedAssets}
           onGenerateVideo={handleGenerateVideo}
           videoGenerating={videoGen.generating}

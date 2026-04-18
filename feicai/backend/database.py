@@ -63,6 +63,18 @@ CREATE TABLE IF NOT EXISTS video_versions (
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS group_status (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    episode_id INTEGER NOT NULL REFERENCES episodes(id) ON DELETE CASCADE,
+    group_id TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    selected_version_id INTEGER,
+    revision_note TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(episode_id, group_id)
+);
 """
 
 async def init_db():

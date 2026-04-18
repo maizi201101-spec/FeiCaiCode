@@ -14,7 +14,6 @@ interface ParamsPanelProps {
   globalPrompt: string
   finalVideoPrompt: string
   currentShotId: string | null
-  allAssets: Asset[]
   groupedAssets: GroupedAssets
   onGenerateVideo?: () => void
   videoGenerating?: boolean
@@ -27,7 +26,6 @@ export default function ParamsPanel({
   globalPrompt,
   finalVideoPrompt,
   currentShotId,
-  allAssets,
   groupedAssets,
   onGenerateVideo,
   videoGenerating = false,
