@@ -8,6 +8,7 @@ import { useVideoGeneration } from '../../hooks/useVideoGeneration'
 import ShotNavPanel from '../../components/assembly/ShotNavPanel'
 import CentralWorkArea from '../../components/assembly/CentralWorkArea'
 import ParamsPanel from '../../components/assembly/ParamsPanel'
+import ExportPromptsButton from '../../components/common/ExportPromptsButton'
 
 interface Tab3AssemblyProps {
   episodeId: number
@@ -100,7 +101,15 @@ export default function Tab3Assembly({ episodeId, projectId, revisionShotIds = [
   )
 
   return (
-    <div className="flex h-full gap-2 p-2">
+    <div className="flex h-full flex-col">
+      {/* 顶部工具栏 */}
+      <div className="flex items-center justify-between px-2 py-1 border-b bg-white">
+        <div className="text-sm text-gray-500">
+          提示词装配与视频生成
+        </div>
+        <ExportPromptsButton episodeId={episodeId} projectId={projectId} />
+      </div>
+      <div className="flex h-full gap-2 p-2">
       <div className="w-[15%] min-w-[180px] border rounded bg-white overflow-hidden">
         <ShotNavPanel
           shots={shotsCollection?.shots || []}

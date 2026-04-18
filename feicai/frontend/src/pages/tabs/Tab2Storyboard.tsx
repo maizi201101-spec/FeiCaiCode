@@ -4,6 +4,7 @@ import { type ShotUpdatePayload } from '../../api/shots'
 import ShotTable from '../../components/storyboard/ShotTable'
 import GroupView from '../../components/storyboard/GroupView'
 import ShotEditPanel from '../../components/storyboard/ShotEditPanel'
+import ExportPromptsButton from '../../components/common/ExportPromptsButton'
 
 interface Tab2StoryboardProps {
   episodeId: number | null
@@ -141,6 +142,7 @@ export default function Tab2Storyboard({ episodeId }: Tab2StoryboardProps) {
 
           {/* 操作按钮 */}
           <div className="flex gap-2">
+            <ExportPromptsButton episodeId={episodeId} />
             <button
               onClick={refetch}
               className="px-3 py-1 bg-gray-100 rounded"
