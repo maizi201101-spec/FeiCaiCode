@@ -12,6 +12,7 @@ import JimengConfig from '../components/settings/JimengConfig'
 import GlobalPromptConfig from '../components/settings/GlobalPromptConfig'
 import VideoParamsConfig from '../components/settings/VideoParamsConfig'
 import PresetsConfig from '../components/settings/PresetsConfig'
+import ProvidersConfig from '../components/settings/ProvidersConfig'
 
 export default function SettingsPage() {
   const projectId = Number(useParams().projectId)
@@ -90,6 +91,9 @@ export default function SettingsPage() {
 
         {/* 预设库配置 */}
         <PresetsConfig projectId={projectId} />
+
+        {/* 提供商配置 */}
+        <ProvidersConfig projectId={projectId} />
 
         {/* 保存按钮 */}
         <div className="bg-white rounded-lg shadow p-4 flex justify-between items-center">
