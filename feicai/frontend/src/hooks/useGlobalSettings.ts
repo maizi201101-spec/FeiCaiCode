@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { type GlobalSettings, getGlobalSettings, updateGlobalSettings } from '../api/prompts'
 
 export function useGlobalSettings(projectId: number | null) {
@@ -19,6 +19,11 @@ export function useGlobalSettings(projectId: number | null) {
       setLoading(false)
     }
   }, [projectId])
+
+  // projectId 变化时自动获取设置
+  useEffect(() => {
+    fetchSettings()
+  }, [fetchSettings])
 
   const saveSettings = useCallback(async (newSettings: GlobalSettings) => {
     if (!projectId) return

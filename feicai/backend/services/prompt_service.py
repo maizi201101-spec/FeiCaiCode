@@ -298,11 +298,11 @@ async def get_global_settings(project_id: int) -> GlobalSettings:
         rows = await cursor.fetchall()
 
     settings = GlobalSettings()
+    prefix = f"project_{project_id}_"
     for key, value in rows:
-        # 解析 key: project_{id}_{setting_name}
-        parts = key.split("_")
-        if len(parts) >= 3:
-            setting_name = parts[2]
+        # 解析 key: project_{id}_{setting_name}，setting_name 可能包含下划线
+        if key.startswith(prefix):
+            setting_name = key[len(prefix):]  # 取前缀后的完整部分
             if setting_name == "global_prompt":
                 settings.global_prompt = value
             elif setting_name == "default_model":
