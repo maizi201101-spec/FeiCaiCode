@@ -158,5 +158,6 @@ export default function Tab3Assembly({ episodeId, projectId, revisionShotIds = [
         />
       </div>
     </div>
+    </div>
   )
 }
