@@ -81,3 +81,8 @@ export async function deleteEpisode(projectId: number, episodeId: number): Promi
   })
   if (!res.ok) throw new Error('删除集数失败')
 }
+
+export async function deleteProject(projectId: number): Promise<void> {
+  const res = await fetch(`${BASE}/projects/${projectId}`, { method: 'DELETE' })
+  if (!res.ok) throw new Error('删除项目失败')
+}

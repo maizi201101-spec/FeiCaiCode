@@ -153,7 +153,11 @@ export default function AssetCard({ asset, projectId, onUpdate, onDelete }: Asse
   return (
     <>
       <div
-        className="bg-gray-800 border border-gray-700 rounded-lg overflow-hidden flex gap-0 cursor-pointer hover:border-gray-500 transition-colors"
+        className={`bg-gray-800 rounded-lg overflow-hidden flex gap-0 cursor-pointer transition-colors ${
+          asset.needs_review
+            ? 'border border-yellow-500/70 hover:border-yellow-400'
+            : 'border border-gray-700 hover:border-gray-500'
+        }`}
         onClick={() => setExpanded(true)}
       >
         {/* 左：16:9 缩略图，最长边完整显示 */}
@@ -278,6 +282,9 @@ export default function AssetCard({ asset, projectId, onUpdate, onDelete }: Asse
                   {TYPE_LABEL[asset.asset_type]}
                 </span>
                 <span className="text-xs text-gray-500">{asset.asset_id}</span>
+                {asset.needs_review && (
+                  <span className="text-xs px-1.5 py-0.5 rounded bg-yellow-900/50 text-yellow-400 border border-yellow-700/50">待审核</span>
+                )}
                 {images.length > 0 && (
                   <span className="text-xs text-gray-600">{images.length} 张图</span>
                 )}
@@ -380,6 +387,14 @@ export default function AssetCard({ asset, projectId, onUpdate, onDelete }: Asse
 
                   <div className="mt-3 flex items-center gap-3 border-t border-gray-700 pt-3">
                     <button onClick={() => setEditing(true)} className="text-xs text-gray-400 hover:text-gray-200">编辑描述</button>
+                    {asset.needs_review && (
+                      <button
+                        onClick={() => onUpdate(asset.asset_type, asset.asset_id, { needs_review: false })}
+                        className="text-xs text-yellow-400 hover:text-yellow-300"
+                      >
+                        标记已审核
+                      </button>
+                    )}
                     <button onClick={handleDelete} className="text-xs text-red-400 hover:text-red-300">删除资产</button>
                   </div>
                 </>

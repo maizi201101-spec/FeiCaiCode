@@ -8,6 +8,8 @@ import {
   setActiveZone,
   type ProjectZone,
 } from '../api/systemSettings'
+import { deleteProject } from '../api/projects'
+import type { Project } from '../api/projects'
 
 export default function HomePage() {
   const navigate = useNavigate()
@@ -17,6 +19,11 @@ export default function HomePage() {
   const [formName, setFormName] = useState('')
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // 删除项目确认弹窗
+  const [deleteTarget, setDeleteTarget] = useState<Project | null>(null)
+  const [deleteConfirmName, setDeleteConfirmName] = useState('')
+  const [deleting, setDeleting] = useState(false)
 
   // 项目区状态
   const [zones, setZones] = useState<ProjectZone[]>([])
@@ -109,6 +116,21 @@ export default function HomePage() {
     return d.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
   }
 
+  async function handleDeleteProject() {
+    if (!deleteTarget || deleteConfirmName !== deleteTarget.name) return
+    setDeleting(true)
+    try {
+      await deleteProject(deleteTarget.id)
+      setDeleteTarget(null)
+      setDeleteConfirmName('')
+      refresh()
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '删除失败')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   const activeZoneName = zones.find(z => z.path === activeZone)?.name || (activeZone ? activeZone.split('/').pop() : '')
 
   return (
@@ -188,14 +210,26 @@ export default function HomePage() {
             {projects.map((project) => (
               <div
                 key={project.id}
+                className="group relative border border-gray-800 rounded-xl p-5 hover:border-gray-600 hover:bg-gray-900 transition-colors cursor-pointer"
                 onClick={() => navigate(`/project/${project.id}`)}
-                className="border border-gray-800 rounded-xl p-5 hover:border-gray-600 hover:bg-gray-900 transition-colors cursor-pointer"
               >
-                <p className="font-medium text-gray-100 truncate">{project.name}</p>
+                <p className="font-medium text-gray-100 truncate pr-6">{project.name}</p>
                 <p className="text-sm text-gray-500 mt-1">
                   {project.episode_count ?? 0} 集 · {formatDate(project.updated_at)}
                 </p>
                 <p className="text-xs text-gray-700 mt-2 truncate">{project.path}</p>
+                {/* 删除按钮：hover 时显示 */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setDeleteTarget(project)
+                    setDeleteConfirmName('')
+                  }}
+                  className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 text-gray-600 hover:text-red-400 transition-opacity text-sm px-1.5 py-0.5 rounded"
+                  title="删除项目"
+                >
+                  ✕
+                </button>
               </div>
             ))}
           </div>
@@ -325,6 +359,44 @@ export default function HomePage() {
                 className="px-4 py-2 border border-gray-700 text-gray-300 text-sm rounded-lg hover:bg-gray-800 transition-colors"
               >
                 关闭
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* 删除项目确认弹窗 */}
+      {deleteTarget && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-md mx-4">
+            <h2 className="text-lg font-semibold text-red-400 mb-2">删除项目</h2>
+            <p className="text-sm text-gray-400 mb-1">
+              此操作将从数据库中删除项目记录，<span className="text-yellow-400">本地文件不会被删除</span>。
+            </p>
+            <p className="text-sm text-gray-400 mb-4">
+              请输入项目名称 <span className="text-white font-medium">「{deleteTarget.name}」</span> 确认：
+            </p>
+            <input
+              type="text"
+              value={deleteConfirmName}
+              onChange={(e) => setDeleteConfirmName(e.target.value)}
+              placeholder={deleteTarget.name}
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:border-red-500 mb-4"
+              autoFocus
+              onKeyDown={(e) => e.key === 'Enter' && handleDeleteProject()}
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setDeleteTarget(null); setDeleteConfirmName('') }}
+                className="flex-1 border border-gray-700 text-gray-300 text-sm px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleDeleteProject}
+                disabled={deleteConfirmName !== deleteTarget.name || deleting}
+                className="flex-1 bg-red-700 hover:bg-red-600 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm px-4 py-2 rounded-lg transition-colors"
+              >
+                {deleting ? '删除中...' : '确认删除'}
               </button>
             </div>
           </div>

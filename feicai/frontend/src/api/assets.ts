@@ -22,6 +22,7 @@ export interface Asset {
   time_of_day?: string
   lighting?: string
   tags: string[]
+  needs_review: boolean
   variants: Variant[]
   base_asset?: string
   images: string[]
@@ -55,6 +56,7 @@ export interface AssetUpdatePayload {
   time_of_day?: string
   lighting?: string
   tags?: string[]
+  needs_review?: boolean
   variants?: Variant[]
   base_asset?: string
 }
