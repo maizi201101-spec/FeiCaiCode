@@ -96,13 +96,20 @@ export default function Stage1Import({
     }
 
     return segments.map((seg, idx) => (
-      <span
-        key={idx}
-        className={seg.episode > 0 ? '' : 'text-gray-500'}
-        title={seg.episode > 0 ? `EP${seg.episode} (${seg.start}-${seg.end})` : '未分配'}
-      >
-        {seg.episode > 1 && <span className="text-indigo-400 font-medium">【EP{seg.episode}】</span>}
-        {seg.text}
+      <span key={idx}>
+        {seg.episode > 1 && (
+          <span className="block my-2 flex items-center gap-2">
+            <span className="flex-1 border-t border-indigo-500/60" />
+            <span className="text-xs text-indigo-400 font-medium shrink-0">EP{seg.episode}</span>
+            <span className="flex-1 border-t border-indigo-500/60" />
+          </span>
+        )}
+        <span
+          className={seg.episode > 0 ? '' : 'text-gray-500'}
+          title={seg.episode > 0 ? `EP${seg.episode} (${seg.start}-${seg.end})` : '未分配'}
+        >
+          {seg.text}
+        </span>
       </span>
     ))
   }
@@ -190,10 +197,10 @@ export default function Stage1Import({
         </div>
       </div>
 
-      {/* 主区域：左右布局 */}
+      {/* 主区域：左右布局，各占 50% */}
       <div className="flex flex-1 gap-4 min-h-0">
         {/* 左侧：剧本全文预览 */}
-        <div className="flex-1 bg-gray-900 rounded-lg border border-gray-700 overflow-hidden">
+        <div className="w-1/2 bg-gray-900 rounded-lg border border-gray-700 overflow-hidden">
           <div className="px-4 py-2 bg-gray-800 border-b border-gray-700 text-sm font-medium text-gray-300">
             剧本全文
           </div>
@@ -208,9 +215,9 @@ export default function Stage1Import({
           </div>
         </div>
 
-        {/* 右侧：检测结果 */}
-        {detectionResult && (
-          <div className="w-[280px]">
+        {/* 右侧：分集结果（始终显示） */}
+        <div className="w-1/2">
+          {detectionResult ? (
             <SplitResultPanel
               results={detectionResult.results}
               avgConfidence={detectionResult.avg_confidence}
@@ -220,27 +227,21 @@ export default function Stage1Import({
               onConfirm={onConfirm}
               detecting={detecting}
             />
-          </div>
-        )}
-
-        {/* 无检测结果时的提示 */}
-        {!detectionResult && !detecting && content && (
-          <div className="w-[280px] bg-gray-900 rounded-lg border border-gray-700 p-4">
-            <div className="text-gray-400 text-center text-sm">
-              点击「开始分集」进行 AI 分集检测
+          ) : detecting ? (
+            <div className="h-full bg-gray-900 rounded-lg border border-gray-700 flex items-center justify-center">
+              <div className="flex items-center gap-2">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-500" />
+                <span className="text-gray-400 text-sm">正在分析...</span>
+              </div>
             </div>
-          </div>
-        )}
-
-        {/* 检测中状态 */}
-        {detecting && (
-          <div className="w-[280px] bg-gray-900 rounded-lg border border-gray-700 p-4">
-            <div className="flex items-center justify-center">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-500"></div>
-              <span className="ml-2 text-gray-400 text-sm">正在分析...</span>
+          ) : (
+            <div className="h-full bg-gray-900 rounded-lg border border-gray-700 flex items-center justify-center">
+              <div className="text-gray-500 text-sm text-center px-6">
+                {content ? '点击「开始分集」进行 AI 分集检测' : '导入剧本后点击「开始分集」'}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   )

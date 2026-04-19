@@ -19,8 +19,15 @@ def _now() -> str:
 
 
 async def get_projects_root() -> str | None:
-    """获取项目区路径"""
+    """获取当前激活项目区路径（优先读 active_zone，兜底读 projects_root_path）"""
     async with aiosqlite.connect(DB_PATH) as db:
+        cursor = await db.execute(
+            "SELECT value FROM settings WHERE key = 'active_zone'"
+        )
+        row = await cursor.fetchone()
+        if row and row[0]:
+            return row[0]
+        # fallback 旧配置
         cursor = await db.execute(
             "SELECT value FROM settings WHERE key = 'projects_root_path'"
         )
@@ -76,17 +83,32 @@ async def create_project(project: ProjectCreate, db=Depends(get_db)):
 
 @router.get("/", response_model=List[ProjectResponse])
 async def list_projects(db=Depends(get_db)):
+    active_zone = await get_projects_root()
     async with db as conn:
-        rows = await (await conn.execute(
-            """
-            SELECT p.id, p.name, p.path, p.created_at, p.updated_at,
-                   COUNT(e.id) AS episode_count
-            FROM projects p
-            LEFT JOIN episodes e ON e.project_id = p.id
-            GROUP BY p.id
-            ORDER BY p.updated_at DESC
-            """
-        )).fetchall()
+        if active_zone:
+            rows = await (await conn.execute(
+                """
+                SELECT p.id, p.name, p.path, p.created_at, p.updated_at,
+                       COUNT(e.id) AS episode_count
+                FROM projects p
+                LEFT JOIN episodes e ON e.project_id = p.id
+                WHERE p.path LIKE ?
+                GROUP BY p.id
+                ORDER BY p.updated_at DESC
+                """,
+                (active_zone.rstrip("/") + "/%",),
+            )).fetchall()
+        else:
+            rows = await (await conn.execute(
+                """
+                SELECT p.id, p.name, p.path, p.created_at, p.updated_at,
+                       COUNT(e.id) AS episode_count
+                FROM projects p
+                LEFT JOIN episodes e ON e.project_id = p.id
+                GROUP BY p.id
+                ORDER BY p.updated_at DESC
+                """
+            )).fetchall()
     return [
         ProjectResponse(id=r[0], name=r[1], path=r[2],
                         created_at=r[3], updated_at=r[4], episode_count=r[5])
