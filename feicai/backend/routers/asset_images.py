@@ -29,7 +29,7 @@ router = APIRouter(tags=["asset_images"])
 
 # 文件上传限制
 ALLOWED_IMAGE_TYPES = {"jpeg", "jpg", "png", "webp"}
-MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10MB
+MAX_IMAGE_SIZE = 25 * 1024 * 1024  # 25MB
 
 
 @router.post("/projects/{project_id}/assets/{asset_type}/{asset_id}/images/upload")

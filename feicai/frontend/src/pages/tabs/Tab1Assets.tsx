@@ -31,6 +31,7 @@ export default function Tab1Assets({ projectId, episodeId, onGoToTab0 }: Tab1Ass
   const [showAddModal, setShowAddModal] = useState(false)
   const [showExtractModal, setShowExtractModal] = useState(false)
   const [batchExtracting, setBatchExtracting] = useState(false)
+  const [batchProgress, setBatchProgress] = useState('')
   const [addForm, setAddForm] = useState({
     asset_type: 'character' as AssetType,
     asset_id: '',
@@ -63,25 +64,30 @@ export default function Tab1Assets({ projectId, episodeId, onGoToTab0 }: Tab1Ass
     if (!confirm(`将对全部 ${episodes.length} 集依次提取资产并合并，可能需要较长时间，确定开始？`)) return
 
     setBatchExtracting(true)
+    let totalChars = 0, totalScenes = 0, totalProps = 0
     try {
-      const episodeIds = episodes.map((e) => e.id)
-      const result = await extractAssets({
-        episode_ids: episodeIds,
-        merge_mode: true,
-      })
-      const total = result.results.reduce(
-        (acc, r) => ({
-          chars: acc.chars + r.characters_count,
-          scenes: acc.scenes + r.scenes_count,
-          props: acc.props + r.props_count,
-        }),
-        { chars: 0, scenes: 0, props: 0 }
-      )
-      alert(`批量提取完成：${total.chars} 角色，${total.scenes} 场景，${total.props} 道具`)
+      for (let i = 0; i < episodes.length; i++) {
+        const ep = episodes[i]
+        setBatchProgress(`EP${String(ep.number).padStart(2, '0')} (${i + 1}/${episodes.length}) 提取中...`)
+        try {
+          const result = await extractAssets({ episode_ids: [ep.id], merge_mode: true })
+          const r = result.results[0]
+          if (r) {
+            totalChars += r.characters_count
+            totalScenes += r.scenes_count
+            totalProps += r.props_count
+          }
+        } catch {
+          // 单集失败不中断，继续下一集
+        }
+      }
+      setBatchProgress('')
+      alert(`批量提取完成：${totalChars} 角色，${totalScenes} 场景，${totalProps} 道具`)
     } catch (e) {
       alert(e instanceof Error ? e.message : '批量提取失败')
     } finally {
       setBatchExtracting(false)
+      setBatchProgress('')
     }
   }
 
@@ -128,6 +134,13 @@ export default function Tab1Assets({ projectId, episodeId, onGoToTab0 }: Tab1Ass
 
       {error && (
         <div className="px-4 py-2 bg-red-900/50 text-red-300 text-sm">{error}</div>
+      )}
+
+      {batchProgress && (
+        <div className="px-4 py-2 bg-orange-900/30 text-orange-300 text-sm flex items-center gap-2">
+          <div className="w-3 h-3 border-2 border-orange-400 border-t-transparent rounded-full animate-spin shrink-0" />
+          {batchProgress}
+        </div>
       )}
 
       <div className="flex-1 overflow-auto">
