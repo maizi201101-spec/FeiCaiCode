@@ -72,6 +72,7 @@ export default function Tab2Storyboard({ projectId, episodeId }: Tab2StoryboardP
       alert('请先选择集数')
       return
     }
+    if (!confirm('将直接从当前集分镜提取资产并写入资产库，是否继续？')) return
     setExtractingAssets(true)
     try {
       const result = await extractFromStoryboard(episodeId)
