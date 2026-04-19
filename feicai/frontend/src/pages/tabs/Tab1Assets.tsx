@@ -1,8 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import AssetToolbar from '../../components/assets/AssetToolbar'
 import AssetGrid from '../../components/assets/AssetGrid'
+import ClusterLogPanel from '../../components/assets/ClusterLogPanel'
 import { useAssets } from '../../hooks/useAssets'
 import { useEpisodes } from '../../hooks/useProjects'
+import { getClusterLog } from '../../api/assets'
 import type { AssetType } from '../../api/assets'
 
 interface Tab1AssetsProps {
@@ -32,6 +34,8 @@ export default function Tab1Assets({ projectId, episodeId, onGoToTab0 }: Tab1Ass
   const [showExtractModal, setShowExtractModal] = useState(false)
   const [batchExtracting, setBatchExtracting] = useState(false)
   const [batchProgress, setBatchProgress] = useState('')
+  const [clusterLogOpen, setClusterLogOpen] = useState(false)
+  const [hasClusterLog, setHasClusterLog] = useState(false)
   const [addForm, setAddForm] = useState({
     asset_type: 'character' as AssetType,
     asset_id: '',
@@ -91,6 +95,13 @@ export default function Tab1Assets({ projectId, episodeId, onGoToTab0 }: Tab1Ass
     }
   }
 
+  // 检测是否有聚类日志
+  useEffect(() => {
+    getClusterLog(projectId)
+      .then((log) => setHasClusterLog((log.clusters?.length ?? 0) > 0))
+      .catch(() => {})
+  }, [projectId, assets]) // assets 变化时重新检测（提取后刷新）
+
   const handleAdd = async () => {
     if (!addForm.asset_id || !addForm.name) {
       alert('请填写资产 ID 和名称')
@@ -117,7 +128,7 @@ export default function Tab1Assets({ projectId, episodeId, onGoToTab0 }: Tab1Ass
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full relative">
       <AssetToolbar
         viewMode={viewMode}
         onViewModeChange={setViewMode}
@@ -128,6 +139,8 @@ export default function Tab1Assets({ projectId, episodeId, onGoToTab0 }: Tab1Ass
         onExtractClick={() => setShowExtractModal(true)}
         onBatchExtractClick={handleBatchExtract}
         onAddClick={() => setShowAddModal(true)}
+        onOpenClusterLog={() => setClusterLogOpen(true)}
+        hasClusterLog={hasClusterLog}
         extracting={extracting}
         batchExtracting={batchExtracting}
       />
@@ -143,8 +156,9 @@ export default function Tab1Assets({ projectId, episodeId, onGoToTab0 }: Tab1Ass
         </div>
       )}
 
-      <div className="flex-1 overflow-auto">
-        {assets.length === 0 && !extracting && !batchExtracting ? (
+      <div className="flex flex-1 overflow-hidden">
+        <div className="flex-1 overflow-auto">
+          {assets.length === 0 && !extracting && !batchExtracting ? (
           <div className="flex flex-col items-center justify-center h-full gap-3 text-center">
             <div className="text-gray-400">暂无资产数据</div>
             <div className="text-sm text-gray-500">
@@ -167,6 +181,10 @@ export default function Tab1Assets({ projectId, episodeId, onGoToTab0 }: Tab1Ass
             onDelete={deleteAsset}
             onAddClick={() => setShowAddModal(true)}
           />
+          )}
+        </div>
+        {clusterLogOpen && (
+          <ClusterLogPanel projectId={projectId} onClose={() => setClusterLogOpen(false)} />
         )}
       </div>
 

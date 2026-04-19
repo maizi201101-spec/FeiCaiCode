@@ -10,6 +10,8 @@ interface AssetToolbarProps {
   onExtractClick: () => void
   onBatchExtractClick: () => void
   onAddClick: () => void
+  onOpenClusterLog: () => void
+  hasClusterLog: boolean
   extracting: boolean
   batchExtracting: boolean
 }
@@ -24,6 +26,8 @@ export default function AssetToolbar({
   onExtractClick,
   onBatchExtractClick,
   onAddClick,
+  onOpenClusterLog,
+  hasClusterLog,
   extracting,
   batchExtracting,
 }: AssetToolbarProps) {
@@ -107,6 +111,14 @@ export default function AssetToolbar({
       />
 
       {/* 操作按钮 */}
+      <button
+        onClick={onOpenClusterLog}
+        disabled={!hasClusterLog}
+        title={hasClusterLog ? '查看聚类审核日志' : '暂无聚类日志，请先提取资产'}
+        className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:text-gray-600 text-gray-300 text-sm rounded-lg transition-colors whitespace-nowrap"
+      >
+        聚类日志
+      </button>
       <button
         onClick={onBatchExtractClick}
         disabled={batchExtracting || extracting}
