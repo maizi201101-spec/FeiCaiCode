@@ -5,8 +5,8 @@ import ClusterLogPanel from '../../components/assets/ClusterLogPanel'
 import CostumeCollapseView from '../../components/assets/CostumeCollapseView'
 import { useAssets } from '../../hooks/useAssets'
 import { useEpisodes } from '../../hooks/useProjects'
-import { getClusterLog, extractFromStoryboard } from '../../api/assets'
-import type { AssetType, ExtractFromStoryboardResult } from '../../api/assets'
+import { getClusterLog, collapsePreview, extractFromStoryboard } from '../../api/assets'
+import type { AssetType, CollapsePreviewResult } from '../../api/assets'
 
 interface Tab1AssetsProps {
   projectId: number
@@ -29,6 +29,7 @@ export default function Tab1Assets({ projectId, episodeId, onGoToTab0 }: Tab1Ass
     editAsset,
     deleteAsset,
     extractAssets,
+    refetch,
   } = useAssets(projectId, episodeId, viewMode)
   const { episodes } = useEpisodes(projectId)
   const [showAddModal, setShowAddModal] = useState(false)
@@ -36,7 +37,7 @@ export default function Tab1Assets({ projectId, episodeId, onGoToTab0 }: Tab1Ass
   const [batchExtracting, setBatchExtracting] = useState(false)
   const [batchProgress, setBatchProgress] = useState('')
   const [extractingFromStoryboard, setExtractingFromStoryboard] = useState(false)
-  const [collapseViewData, setCollapseViewData] = useState<ExtractFromStoryboardResult | null>(null)
+  const [collapseViewData, setCollapseViewData] = useState<CollapsePreviewResult | null>(null)
   const [clusterLogOpen, setClusterLogOpen] = useState(false)
   const [hasClusterLog, setHasClusterLog] = useState(false)
   const [addForm, setAddForm] = useState({
@@ -105,8 +106,8 @@ export default function Tab1Assets({ projectId, episodeId, onGoToTab0 }: Tab1Ass
     }
     setExtractingFromStoryboard(true)
     try {
-      const result = await extractFromStoryboard(episodeId)
-      setCollapseViewData(result)
+      const preview = await collapsePreview(episodeId)
+      setCollapseViewData(preview)
     } catch (e) {
       alert(e instanceof Error ? e.message : '从分镜提取失败')
     } finally {
@@ -115,9 +116,14 @@ export default function Tab1Assets({ projectId, episodeId, onGoToTab0 }: Tab1Ass
   }
 
   const handleCollapseConfirm = async () => {
+    if (!episodeId) return
+    try {
+      await extractFromStoryboard(episodeId)
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '资产写入失败')
+    }
     setCollapseViewData(null)
-    // 资产已在后端写入，刷新列表
-    window.location.reload()
+    refetch()
   }
 
   // 检测是否有聚类日志  useEffect(() => {
@@ -325,7 +331,7 @@ export default function Tab1Assets({ projectId, episodeId, onGoToTab0 }: Tab1Ass
       {/* 从分镜提取 - 装扮坍缩确认弹窗 */}
       {collapseViewData && (
         <CostumeCollapseView
-          collapsedData={collapseViewData.collapsed_refs}
+          collapsedData={collapseViewData}
           onConfirm={handleCollapseConfirm}
           onCancel={() => setCollapseViewData(null)}
         />

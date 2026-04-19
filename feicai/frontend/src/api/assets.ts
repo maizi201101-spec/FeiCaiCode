@@ -324,18 +324,32 @@ export interface CostumeEntry {
   label: string
   aliases: string[]
   episodes: string[]
-  count: number
+  variant_id: string | null
 }
 
 export interface CharacterCostumes {
-  character_name: string
   costumes: CostumeEntry[]
 }
 
 export interface CostumeRegistry {
-  version: string
-  characters: CharacterCostumes[]
+  version: number
+  characters: Record<string, CharacterCostumes>
   updated_at: string
+}
+
+export interface CollapsePreviewResult {
+  characters: StoryboardCollapsedCharacter[]
+  scenes: Array<{ name: string; episodes: string[] }>
+  props: Array<{ name: string; episodes: string[] }>
+}
+
+export async function collapsePreview(episodeId: number): Promise<CollapsePreviewResult> {
+  const res = await fetch(`${BASE}/episodes/${episodeId}/assets/collapse-preview`)
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error((err as { detail?: string }).detail || '获取装扮预览失败')
+  }
+  return res.json()
 }
 
 export async function extractFromStoryboard(

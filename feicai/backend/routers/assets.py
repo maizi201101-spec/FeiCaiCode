@@ -11,7 +11,7 @@ from services.asset_service import (
     read_assets, write_assets, add_asset, update_asset, delete_asset,
     run_two_phase_extraction,
 )
-from services.asset_extraction_from_storyboard import extract_assets_from_storyboard
+from services.asset_extraction_from_storyboard import extract_assets_from_storyboard, collapse_asset_refs_from_shots
 from services.script_service import get_project_path, get_episode_info
 
 router = APIRouter(tags=["assets"])
@@ -156,6 +156,27 @@ async def extract_assets(project_id: int, payload: ExtractRequest):
         raise HTTPException(500, result.get("error", "提取失败"))
 
     return result
+
+
+@router.get("/episodes/{episode_id}/assets/collapse-preview")
+async def collapse_preview(episode_id: int):
+    """从分镜 asset_refs 坍缩预览（不写入 assets.json）"""
+    episode = await get_episode_info(episode_id)
+    if not episode:
+        raise HTTPException(404, "集数不存在")
+
+    project_id = episode["project_id"]
+    project_path = await get_project_path(project_id)
+    if not project_path:
+        raise HTTPException(404, "项目不存在")
+
+    try:
+        collapsed = await collapse_asset_refs_from_shots(episode_id, project_id)
+        return collapsed
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except Exception as e:
+        raise HTTPException(500, str(e))
 
 
 @router.post("/episodes/{episode_id}/assets/extract-from-storyboard")
