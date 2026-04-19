@@ -124,7 +124,7 @@ async def extract_raw_mentions_from_episode(
     prompt = f"""你是短剧剧本分析助手。请分析本集剧本，找出所有出现的角色、场景、道具。
 
 本集剧本：
-{script_content[:3000]}
+{script_content}
 
 任务要求（严格遵守）：
 1. 列出本集实际出现的所有角色、场景、关键道具
