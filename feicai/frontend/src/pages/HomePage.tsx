@@ -9,10 +9,12 @@ export default function HomePage() {
   const [formName, setFormName] = useState('')
   const [formPath, setFormPath] = useState('')
   const [creating, setCreating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   async function handleCreate() {
     if (!formName.trim() || !formPath.trim()) return
     setCreating(true)
+    setError(null)
     try {
       const project = await createProject({ name: formName.trim(), path: formPath.trim() })
       setShowModal(false)
@@ -20,7 +22,7 @@ export default function HomePage() {
       setFormPath('')
       navigate(`/project/${project.id}`)
     } catch (e) {
-      console.error(e)
+      setError(e instanceof Error ? e.message : '创建项目失败')
     } finally {
       setCreating(false)
     }
@@ -84,7 +86,7 @@ export default function HomePage() {
                 <input
                   type="text"
                   value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
+                  onChange={(e) => { setFormName(e.target.value); setError(null) }}
                   placeholder="例：都市短剧01"
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:border-indigo-500"
                   autoFocus
@@ -95,17 +97,24 @@ export default function HomePage() {
                 <input
                   type="text"
                   value={formPath}
-                  onChange={(e) => setFormPath(e.target.value)}
-                  placeholder="例：/Users/me/Projects/drama01"
+                  onChange={(e) => { setFormPath(e.target.value); setError(null) }}
+                  placeholder="例：/Users/jm02/TongBu/我的项目"
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:border-indigo-500"
                 />
                 <p className="text-xs text-gray-600 mt-1">项目文件将保存到此目录（会自动创建）</p>
               </div>
+
+              {/* 错误提示 */}
+              {error && (
+                <div className="text-sm text-red-400 bg-red-900/20 rounded px-3 py-2">
+                  {error}
+                </div>
+              )}
             </div>
 
             <div className="flex gap-3 mt-6">
               <button
-                onClick={() => { setShowModal(false); setFormName(''); setFormPath('') }}
+                onClick={() => { setShowModal(false); setFormName(''); setFormPath(''); setError(null) }}
                 className="flex-1 border border-gray-700 text-gray-300 text-sm px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors"
               >
                 取消
