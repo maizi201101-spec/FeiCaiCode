@@ -43,8 +43,10 @@ export function useShots(episodeId: number | null) {
     try {
       const { taskId } = await planShots(episodeId)
 
-      // 轮询任务状态
+      // 轮询任务状态（最多等 10 分钟：120次 × 5秒）
       await pollTaskStatus(taskId, {
+        interval: 5000,
+        maxAttempts: 120,
         onComplete: () => {
           setGenerating(false)
           fetchShots()

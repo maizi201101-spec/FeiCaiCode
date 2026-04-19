@@ -44,6 +44,8 @@ export function usePrompts(episodeId: number | null) {
       const { taskId } = await generatePrompts(episodeId)
 
       await pollTaskStatus(taskId, {
+        interval: 5000,
+        maxAttempts: 120,
         onComplete: () => {
           setGenerating(false)
           fetchPrompts()
