@@ -91,10 +91,10 @@ async def extract_assets_from_episode(
 
 请按以下 JSON 格式输出：
 ```json
-{
+{{
   "summary": "该集梗概（100-200字）",
   "characters": [
-    {
+    {{
       "asset_id": "人物1",
       "name": "角色名称",
       "gender": "性别",
@@ -103,10 +103,10 @@ async def extract_assets_from_episode(
       "outfit": "服装描述",
       "tags": [],
       "variants": []
-    }
+    }}
   ],
   "scenes": [
-    {
+    {{
       "asset_id": "场景1",
       "name": "场景名称",
       "description": "场景描述",
@@ -114,17 +114,17 @@ async def extract_assets_from_episode(
       "time_of_day": "时间",
       "lighting": "光线",
       "variants": []
-    }
+    }}
   ],
   "props": [
-    {
+    {{
       "asset_id": "道具1",
       "name": "道具名称",
       "description": "道具描述",
       "variants": []
-    }
+    }}
   ]
-}
+}}
 ```
 
 识别规则：
@@ -170,10 +170,16 @@ async def extract_assets_from_episode(
         summary_file = script_file.parent / "summary.txt"
         summary_file.write_text(data["summary"], encoding="utf-8")
 
+    def _sanitize(item: dict) -> dict:
+        # LLM 有时把 variants 返回成字符串列表，过滤掉非 dict 的项
+        if "variants" in item:
+            item["variants"] = [v for v in item["variants"] if isinstance(v, dict)]
+        return item
+
     # 转换为模型
-    characters = [Character(**c) for c in data.get("characters", [])]
-    scenes = [Scene(**s) for s in data.get("scenes", [])]
-    props = [Prop(**p) for p in data.get("props", [])]
+    characters = [Character(**_sanitize(c)) for c in data.get("characters", []) if isinstance(c, dict)]
+    scenes = [Scene(**_sanitize(s)) for s in data.get("scenes", []) if isinstance(s, dict)]
+    props = [Prop(**_sanitize(p)) for p in data.get("props", []) if isinstance(p, dict)]
 
     return ExtractProgress(
         episode_id=episode_id,
