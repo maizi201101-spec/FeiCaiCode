@@ -170,3 +170,32 @@ export async function checkCanReSplit(projectId: number): Promise<{ can_re_split
   if (!res.ok) throw new Error('检查失败')
   return res.json()
 }
+
+/**批量重新生成全集梗概 */
+export async function regenerateAllSummaries(projectId: number): Promise<{
+  total: number
+  success_count: number
+  error_count: number
+}> {
+  const res = await fetch(`${BASE}/projects/${projectId}/regenerate-all-summaries`, {
+    method: 'POST',
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error((err as { detail?: string }).detail || '批量生成梗概失败')
+  }
+  return res.json()
+}
+
+/**更新单集剧本内容 */
+export async function updateEpisodeScript(episodeId: number, content: string): Promise<void> {
+  const res = await fetch(`${BASE}/episodes/${episodeId}/script`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error((err as { detail?: string }).detail || '保存剧本失败')
+  }
+}

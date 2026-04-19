@@ -6,7 +6,7 @@ import { useScriptManagement } from '../../hooks/useScriptManagement'
 import { useSplitDetection } from '../../hooks/useSplitDetection'
 import Stage1Import from '../../components/script/Stage1Import'
 import Stage2List from '../../components/script/Stage2List'
-import { type EpisodeSplitResult, type ScriptType } from '../../api/scriptManagement'
+import { type EpisodeSplitResult, type ScriptType, regenerateAllSummaries } from '../../api/scriptManagement'
 
 interface Tab0ScriptManagementProps {
   projectId: number
@@ -57,8 +57,13 @@ export default function Tab0ScriptManagement({ projectId, onGoToTab1 }: Tab0Scri
 
   // 重新生成全部梗概
   const handleRegenerateAllSummaries = async () => {
-    // TODO: 实现批量重新生成
-    alert('功能开发中')
+    if (!confirm('将重新生成所有集的梗概，可能需要较长时间，确定继续？')) return
+    try {
+      const result = await regenerateAllSummaries(projectId)
+      alert(`批量生成完成：${result.success_count}/${result.total} 集成功`)
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '批量生成失败')
+    }
   }
 
   return (

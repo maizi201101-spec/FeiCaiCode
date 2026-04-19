@@ -105,7 +105,7 @@ export default function WorkbenchLayout({
         <div className="ml-auto flex items-center gap-3">
           {projectIdNum && <TaskIndicator projectId={projectIdNum} />}
           <Link
-            to={`/project/${projectId}/settings`}
+            to="/settings"
             className="text-sm text-gray-400 hover:text-gray-200"
           >
             ⚙ 设置

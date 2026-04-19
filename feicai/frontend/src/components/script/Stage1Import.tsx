@@ -25,6 +25,7 @@ export default function Stage1Import({
   const [scriptType, setScriptType] = useState<ScriptType>('traditional')
   const [expectedEpisodes, setExpectedEpisodes] = useState<number | undefined>(undefined)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const scriptPanelRef = useRef<HTMLDivElement>(null)
 
   // 处理文件上传
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -96,7 +97,7 @@ export default function Stage1Import({
     }
 
     return segments.map((seg, idx) => (
-      <span key={idx}>
+      <span key={idx} id={seg.episode > 0 ? `ep-segment-${seg.episode}` : undefined}>
         {seg.episode > 1 && (
           <span className="block my-2 flex items-center gap-2">
             <span className="flex-1 border-t border-indigo-500/60" />
@@ -112,6 +113,12 @@ export default function Stage1Import({
         </span>
       </span>
     ))
+  }
+
+  // 点击右侧集数列表，滚动左侧到对应集数位置
+  const handleScrollToEpisode = (episodeNumber: number) => {
+    const el = scriptPanelRef.current?.querySelector(`#ep-segment-${episodeNumber}`)
+    el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
   return (
@@ -204,7 +211,7 @@ export default function Stage1Import({
           <div className="px-4 py-2 bg-gray-800 border-b border-gray-700 text-sm font-medium text-gray-300">
             剧本全文
           </div>
-          <div className="p-4 overflow-y-auto h-[calc(100%-40px)] text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">
+          <div ref={scriptPanelRef} className="p-4 overflow-y-auto h-[calc(100%-40px)] text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">
             {content ? (
               detectionResult ? renderHighlightedContent() : content
             ) : (
@@ -226,6 +233,7 @@ export default function Stage1Import({
               gapPositions={detectionResult.gap_positions}
               onConfirm={onConfirm}
               detecting={detecting}
+              onScrollToEpisode={handleScrollToEpisode}
             />
           ) : detecting ? (
             <div className="h-full bg-gray-900 rounded-lg border border-gray-700 flex items-center justify-center">

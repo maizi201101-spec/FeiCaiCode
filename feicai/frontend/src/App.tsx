@@ -9,7 +9,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/project/:projectId/*" element={<WorkbenchPage />} />
-        <Route path="/project/:projectId/settings" element={<SettingsPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
       </Routes>
     </BrowserRouter>
   )

@@ -12,6 +12,7 @@ interface SplitResultPanelProps {
   gapPositions: number[]
   onConfirm: () => void
   detecting: boolean
+  onScrollToEpisode?: (episodeNumber: number) => void
 }
 
 export default function SplitResultPanel({
@@ -22,6 +23,7 @@ export default function SplitResultPanel({
   gapPositions,
   onConfirm,
   detecting,
+  onScrollToEpisode,
 }: SplitResultPanelProps) {
   if (detecting) {
     return (
@@ -51,9 +53,10 @@ export default function SplitResultPanel({
           {results.map((result, index) => (
             <div
               key={index}
+              onClick={() => onScrollToEpisode?.(result.episode_number)}
               className={`px-4 py-2 flex items-center justify-between border-b border-gray-800 last:border-b-0 ${
                 result.is_abnormal ? 'bg-red-900/20' : ''
-              }`}
+              } ${onScrollToEpisode ? 'cursor-pointer hover:bg-gray-800/60' : ''}`}
             >
               <div className="flex items-center gap-4">
                 <span className="text-sm font-medium text-gray-300">

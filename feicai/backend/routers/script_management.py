@@ -3,6 +3,7 @@
 """
 
 from fastapi import APIRouter, HTTPException, Depends
+from pydantic import BaseModel
 import aiosqlite
 from pathlib import Path
 
@@ -22,6 +23,7 @@ from services.summary_service import (
     generate_all_summaries,
     regenerate_summary,
     get_project_path,
+    save_script,
 )
 
 router = APIRouter(tags=["script-management"])
@@ -293,6 +295,32 @@ async def get_episode_script_detail(episode_id: int):
     )
 
 
+class UpdateScriptRequest(BaseModel):
+    content: str
+
+
+@router.put("/episodes/{episode_id}/script")
+async def update_episode_script(episode_id: int, payload: UpdateScriptRequest):
+    """更新单集剧本内容"""
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        cursor = await db.execute(
+            "SELECT e.number, p.path FROM episodes e JOIN projects p ON p.id = e.project_id WHERE e.id = ?",
+            (episode_id,)
+        )
+        row = await cursor.fetchone()
+        if not row:
+            raise HTTPException(404, "集数不存在")
+        ep_num = row["number"]
+        project_path = row["path"]
+
+    if not project_path:
+        raise HTTPException(400, "项目路径不存在")
+
+    await save_script(project_path, ep_num, payload.content)
+    return {"episode_id": episode_id, "message": "剧本已保存"}
+
+
 @router.post("/episodes/{episode_id}/regenerate-summary", response_model=RegenerateSummaryResponse)
 async def regenerate_episode_summary(episode_id: int):
     """重新生成单集梗概"""
@@ -321,6 +349,38 @@ async def regenerate_episode_summary(episode_id: int):
         summary=summary,
         message="梗概已重新生成"
     )
+
+
+@router.post("/projects/{project_id}/regenerate-all-summaries")
+async def regenerate_all_project_summaries(project_id: int):
+    """批量重新生成项目所有集梗概"""
+    if not await get_project_exists(project_id):
+        raise HTTPException(404, "项目不存在")
+
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        cursor = await db.execute(
+            "SELECT id, number FROM episodes WHERE project_id = ? ORDER BY number",
+            (project_id,)
+        )
+        episodes = await cursor.fetchall()
+
+    results = []
+    errors = []
+    for ep in episodes:
+        try:
+            summary = await regenerate_summary(ep["id"])
+            results.append({"episode_id": ep["id"], "episode_number": ep["number"], "success": True})
+        except Exception as e:
+            errors.append({"episode_id": ep["id"], "episode_number": ep["number"], "error": str(e)})
+
+    return {
+        "total": len(episodes),
+        "success_count": len(results),
+        "error_count": len(errors),
+        "results": results,
+        "errors": errors,
+    }
 
 
 @router.get("/projects/{project_id}/can-re-split")
