@@ -126,7 +126,8 @@ export default function Tab1Assets({ projectId, episodeId, onGoToTab0 }: Tab1Ass
     refetch()
   }
 
-  // 检测是否有聚类日志  useEffect(() => {
+  // 检测是否有聚类日志
+  useEffect(() => {
     getClusterLog(projectId)
       .then((log) => setHasClusterLog((log.clusters?.length ?? 0) > 0))
       .catch(() => {})
