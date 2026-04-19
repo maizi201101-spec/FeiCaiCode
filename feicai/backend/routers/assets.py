@@ -38,6 +38,20 @@ def asset_to_response(asset_type: AssetType, asset: dict) -> AssetResponse:
     )
 
 
+@router.get("/projects/{project_id}/assets/cluster-log")
+async def get_cluster_log(project_id: int):
+    """获取最近一次资产提取的聚类决策记录（供审核浮板使用）"""
+    project_path = await get_project_path(project_id)
+    if not project_path:
+        raise HTTPException(404, "项目不存在")
+
+    cluster_log_file = Path(project_path) / "cluster_log.json"
+    if not cluster_log_file.exists():
+        return {"extracted_at": None, "clusters": []}
+
+    return json.loads(cluster_log_file.read_text(encoding="utf-8"))
+
+
 @router.get("/projects/{project_id}/assets")
 async def list_assets(project_id: int, asset_type: Optional[AssetType] = None):
     """获取项目资产列表"""

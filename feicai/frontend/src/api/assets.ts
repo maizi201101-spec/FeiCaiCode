@@ -299,3 +299,25 @@ export async function getTaskStatus(taskId: number): Promise<TaskStatus> {
 export function getImageUrl(projectId: number, assetType: AssetType, assetId: string, imageIndex: number): string {
   return `${BASE}/projects/${projectId}/assets/${assetType}/${assetId}/images/${imageIndex}/file`
 }
+
+// ========== 聚类审核日志 API ==========
+
+export interface ClusterEntry {
+  asset_id: string
+  canonical_name: string
+  type: AssetType
+  aliases: string[]
+  source_episodes: string[]
+  has_inconsistent_names: boolean
+}
+
+export interface ClusterLog {
+  extracted_at: string | null
+  clusters: ClusterEntry[]
+}
+
+export async function getClusterLog(projectId: number): Promise<ClusterLog> {
+  const res = await fetch(`${BASE}/projects/${projectId}/assets/cluster-log`)
+  if (!res.ok) throw new Error('获取聚类日志失败')
+  return res.json()
+}

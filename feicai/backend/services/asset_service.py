@@ -573,6 +573,33 @@ async def run_two_phase_extraction(
     )
     await write_assets(project_id, final_collection)
 
+    # ── 写 cluster_log.json（聚类决策记录，供审核浮板使用）──
+    from datetime import datetime, timezone
+    cluster_log_entries = []
+    for cluster in clusters:
+        aliases = cluster.get("all_names", [])
+        source_episodes = sorted(set(
+            ep.get("episode_number") for ep in cluster.get("episodes", [])
+            if ep.get("episode_number") is not None
+        ))
+        has_inconsistent_names = len(set(aliases)) > 1
+        cluster_log_entries.append({
+            "asset_id": cluster["asset_id"],
+            "canonical_name": cluster["canonical_name"],
+            "type": cluster["type"],
+            "aliases": aliases,
+            "source_episodes": [f"EP{n:02d}" for n in source_episodes],
+            "has_inconsistent_names": has_inconsistent_names,
+        })
+    cluster_log = {
+        "extracted_at": datetime.now(timezone.utc).isoformat(),
+        "clusters": cluster_log_entries,
+    }
+    cluster_log_file = Path(project_path) / "cluster_log.json"
+    cluster_log_file.write_text(
+        json.dumps(cluster_log, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+
     # ── 更新各集 episode_assets.json ─────────────────────
     for ep_id, index in ep_asset_index.items():
         ep_info = None
