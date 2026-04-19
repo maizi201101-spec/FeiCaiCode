@@ -74,8 +74,8 @@ async def check_has_downstream_data(project_id: int) -> tuple[bool, str | None]:
     if not project_path:
         return False, None
 
-    # 检查 assets.json
-    assets_file = Path(project_path) / "assets" / "assets.json"
+    # 检查 assets.json（路径与 asset_service.py 保持一致）
+    assets_file = Path(project_path) / "assets.json"
     if assets_file.exists():
         return True, "已有资产数据"
 

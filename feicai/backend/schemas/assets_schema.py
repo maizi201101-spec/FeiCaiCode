@@ -128,3 +128,7 @@ class ExtractProgress(BaseModel):
     props_count: int = 0
     summary: Optional[str] = None
     error: Optional[str] = None
+    # 实际提取的资产数据（仅内部流转，API 响应中排除）
+    characters: List[Character] = []
+    scenes: List[Scene] = []
+    props: List[Prop] = []
