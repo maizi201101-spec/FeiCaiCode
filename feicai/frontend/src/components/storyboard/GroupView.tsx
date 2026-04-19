@@ -35,10 +35,10 @@ export default function GroupView({ shots, groups, onEditShot }: GroupViewProps)
         const isExpanded = expandedGroups.has(group.group_id)
 
         return (
-          <div key={group.group_id} className="border rounded-lg overflow-hidden">
+          <div key={group.group_id} className="border border-gray-700 rounded-lg overflow-hidden">
             {/* 组标题 */}
             <div
-              className="flex items-center justify-between p-3 cursor-pointer hover:bg-gray-50"
+              className="flex items-center justify-between p-3 cursor-pointer hover:bg-gray-800"
               onClick={() => toggleGroup(group.group_id)}
             >
               <div className="flex items-center gap-3">
@@ -66,10 +66,10 @@ export default function GroupView({ shots, groups, onEditShot }: GroupViewProps)
               <span
                 className={`px-2 py-1 rounded text-xs ${
                   color === 'green'
-                    ? 'bg-green-100 text-green-700'
+                    ? 'bg-green-900/50 text-green-400'
                     : color === 'yellow'
-                    ? 'bg-yellow-100 text-yellow-700'
-                    : 'bg-red-100 text-red-700'
+                    ? 'bg-yellow-900/50 text-yellow-400'
+                    : 'bg-red-900/50 text-red-400'
                 }`}
               >
                 {color === 'green' ? '正常' : color === 'yellow' ? '接近上限' : '超出限制'}
@@ -83,11 +83,11 @@ export default function GroupView({ shots, groups, onEditShot }: GroupViewProps)
 
             {/* 组内镜头列表 */}
             {isExpanded && (
-              <div className="border-t bg-gray-50">
+              <div className="border-t border-gray-700 bg-gray-800">
                 {groupShots.map((shot) => (
                   <div
                     key={shot.shot_id}
-                    className="flex items-center justify-between p-2 hover:bg-blue-50 cursor-pointer"
+                    className="flex items-center justify-between p-2 hover:bg-gray-700 cursor-pointer"
                     onClick={() => onEditShot(shot.shot_id)}
                   >
                     <div className="flex items-center gap-4">
@@ -99,7 +99,7 @@ export default function GroupView({ shots, groups, onEditShot }: GroupViewProps)
                       </span>
                     </div>
 
-                    <div className="text-sm text-gray-600 truncate max-w-md">
+                    <div className="text-sm text-gray-400 truncate max-w-md">
                       {shot.frame_action}
                     </div>
 

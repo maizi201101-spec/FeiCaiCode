@@ -103,14 +103,14 @@ export default function Tab3Assembly({ episodeId, projectId, revisionShotIds = [
   return (
     <div className="flex h-full flex-col">
       {/* 顶部工具栏 */}
-      <div className="flex items-center justify-between px-2 py-1 border-b bg-white">
-        <div className="text-sm text-gray-500">
+      <div className="flex items-center justify-between px-2 py-1 border-b border-gray-800 bg-gray-900">
+        <div className="text-sm text-gray-400">
           提示词装配与视频生成
         </div>
         <ExportPromptsButton episodeId={episodeId} projectId={projectId} />
       </div>
       <div className="flex h-full gap-2 p-2">
-      <div className="w-[15%] min-w-[180px] border rounded bg-white overflow-hidden">
+      <div className="w-[15%] min-w-[180px] border border-gray-800 rounded bg-gray-900 overflow-hidden">
         <ShotNavPanel
           shots={shotsCollection?.shots || []}
           prompts={prompts}
@@ -121,7 +121,7 @@ export default function Tab3Assembly({ episodeId, projectId, revisionShotIds = [
           onFocusHandled={onFocusHandled}
         />
       </div>
-      <div className="w-[55%] border rounded bg-white overflow-hidden flex flex-col">
+      <div className="w-[55%] border border-gray-800 rounded bg-gray-900 overflow-hidden flex flex-col">
         <CentralWorkArea
           mode={assembly.mode}
           onModeChange={assembly.setMode}
@@ -144,7 +144,7 @@ export default function Tab3Assembly({ episodeId, projectId, revisionShotIds = [
           videoGenerating={videoGen.generating}
         />
       </div>
-      <div className="w-[30%] min-w-[280px] border rounded bg-white overflow-hidden">
+      <div className="w-[30%] min-w-[280px] border border-gray-800 rounded bg-gray-900 overflow-hidden">
         <ParamsPanel
           settings={settings}
           referenceImages={assembly.referenceImages}

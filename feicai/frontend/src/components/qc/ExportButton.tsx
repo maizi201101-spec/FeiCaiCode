@@ -42,10 +42,10 @@ export default function ExportButton({ episodeId, confirmedCount, totalCount }: 
         disabled={!isReady || exporting}
         className={`px-3 py-1 text-sm rounded ${
           !isReady
-            ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+            ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
             : exporting
-            ? 'bg-gray-200 text-gray-500 cursor-wait'
-            : 'bg-blue-500 text-white hover:bg-blue-600'
+            ? 'bg-gray-700 text-gray-500 cursor-wait'
+            : 'bg-blue-600 text-white hover:bg-blue-500'
         }`}
       >
         {exporting ? '导出中...' : isReady ? '导出剪映草稿' : `未完成 (${confirmedCount}/${totalCount})`}
@@ -53,11 +53,11 @@ export default function ExportButton({ episodeId, confirmedCount, totalCount }: 
 
       {/* 导出结果 */}
       {result && (
-        <div className="text-xs text-green-600 text-right max-w-[300px]">
+        <div className="text-xs text-green-400 text-right max-w-[300px]">
           <div className="font-medium">导出成功！</div>
           <div className="text-gray-500 mt-1">文件路径:</div>
-          <div className="text-gray-700">{result.file_path}</div>
-          <div className="text-gray-400 mt-1">
+          <div className="text-gray-400">{result.file_path}</div>
+          <div className="text-gray-600 mt-1">
             请在剪映中选择「导入草稿」，选择此文件
           </div>
         </div>

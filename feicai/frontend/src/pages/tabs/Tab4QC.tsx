@@ -117,10 +117,10 @@ export default function Tab4QC({ episodeId, onGoToTab3, onRevisionShotIdsChange 
   return (
     <div className="flex flex-col h-full">
       {/* 顶部工具栏 */}
-      <div className="flex items-center gap-4 px-4 py-2 border-b bg-gray-50 shrink-0">
+      <div className="flex items-center gap-4 px-4 py-2 border-b border-gray-800 bg-gray-900 shrink-0">
         {/* 确认进度 */}
-        <div className="text-sm text-gray-600">
-          已确认：<span className="font-medium text-green-600">{confirmedCount}</span> / {totalCount} 组
+        <div className="text-sm text-gray-400">
+          已确认：<span className="font-medium text-green-400">{confirmedCount}</span> / {totalCount} 组
         </div>
 
         {/* 筛选按钮 */}
@@ -131,8 +131,8 @@ export default function Tab4QC({ episodeId, onGoToTab3, onRevisionShotIdsChange 
               onClick={() => setFilter(f)}
               className={`px-2 py-1 text-xs rounded ${
                 filter === f
-                  ? 'bg-blue-500 text-white'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
               }`}
             >
               {f === 'all' ? '全部' : f === 'pending' ? '待审' : f === 'revision' ? '返修' : '合格'}

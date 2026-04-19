@@ -34,15 +34,15 @@ function getShotStatus(
 function getStatusStyle(status: ShotStatus): string {
   switch (status) {
     case 'confirmed':
-      return 'bg-green-100 text-green-700 border-green-300'
+      return 'bg-green-900/50 text-green-400 border-green-700'
     case 'pending':
-      return 'bg-orange-100 text-orange-700 border-orange-300'
+      return 'bg-orange-900/50 text-orange-400 border-orange-700'
     case 'revision':
-      return 'bg-red-100 text-red-700 border-red-300'
+      return 'bg-red-900/50 text-red-400 border-red-700'
     case 'not_generated':
-      return 'bg-gray-100 text-gray-500 border-gray-300'
+      return 'bg-gray-800 text-gray-500 border-gray-600'
     default:
-      return 'bg-gray-100 text-gray-500'
+      return 'bg-gray-800 text-gray-500'
   }
 }
 
@@ -121,7 +121,7 @@ export default function ShotNavPanel({
   return (
     <div className="flex flex-col h-full overflow-auto">
       {/* 顶部统计 */}
-      <div className="p-2 border-b bg-gray-50">
+      <div className="p-2 border-b border-gray-800 bg-gray-900">
         <div className="text-xs text-gray-500">
           共 {shots.length} 个镜头 / {Object.keys(groups).length} 个组
         </div>
@@ -149,19 +149,19 @@ export default function ShotNavPanel({
           const allConfirmed = groupStatuses.every(s => s === 'confirmed')
 
           return (
-            <div key={groupId} className="border-b">
+            <div key={groupId} className="border-b border-gray-800">
               {/* 组标题（可折叠） */}
               <button
                 onClick={() => toggleGroup(groupId)}
                 className={`w-full px-2 py-1 font-medium text-sm flex items-center gap-2
-                  ${hasRevision ? 'bg-red-50' : allConfirmed ? 'bg-green-50' : 'bg-gray-100'}
+                  ${hasRevision ? 'bg-red-950/50' : allConfirmed ? 'bg-green-950/50' : 'bg-gray-800'}
                 `}
               >
                 {/* 折叠图标 */}
                 <span className="text-gray-400">
                   {isExpanded ? '▼' : '▶'}
                 </span>
-                <span className="text-gray-600">{groupId}</span>
+                <span className="text-gray-300">{groupId}</span>
                 <span className="text-xs text-gray-400">
                   ({groupShots.length} 镜头)
                 </span>
@@ -177,7 +177,7 @@ export default function ShotNavPanel({
                     key={shot.shot_id}
                     onClick={() => onSelectShot(shot.shot_id, shot.group_id)}
                     className={`w-full px-3 py-1.5 text-left text-sm flex items-center gap-2
-                      ${isSelected ? 'bg-blue-50 border-l-2 border-blue-500' : 'hover:bg-gray-50'}
+                      ${isSelected ? 'bg-blue-900/50 border-l-2 border-blue-500' : 'hover:bg-gray-800'}
                     `}
                   >
                     {/* 镜头ID */}

@@ -63,7 +63,7 @@ export default function GroupColumn({
       {group.status !== 'approved' && (
         <button
           onClick={() => onMarkApproved(group.group_id)}
-          className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded hover:bg-green-200 w-full"
+          className="text-xs px-2 py-0.5 bg-green-900/50 text-green-400 rounded hover:bg-green-800/60 w-full"
         >
           标记合格
         </button>
@@ -72,7 +72,7 @@ export default function GroupColumn({
       {group.status !== 'revision' && (
         <button
           onClick={() => onMarkRevision(group.group_id)}
-          className="text-xs px-2 py-0.5 bg-red-100 text-red-700 rounded hover:bg-red-200 w-full"
+          className="text-xs px-2 py-0.5 bg-red-900/50 text-red-400 rounded hover:bg-red-800/60 w-full"
         >
           标记返修
         </button>

@@ -87,16 +87,16 @@ export default function ParamsPanel({
   return (
     <div className="flex flex-col h-full overflow-auto">
       {/* 模型选择 */}
-      <div className="p-2 border-b">
+      <div className="p-2 border-b border-gray-800">
         <label className="text-sm font-medium">生成模型</label>
-        <select className="w-full mt-1 border rounded px-2 py-1 text-sm focus:outline-none" value={settings?.default_model || 'seedance2.0'}>
+        <select className="w-full mt-1 border border-gray-700 rounded px-2 py-1 text-sm focus:outline-none bg-gray-800 text-gray-200" value={settings?.default_model || 'seedance2.0'}>
           <option value="seedance2.0">Seedance 2.0</option>
           <option value="seedance2.0_fast">Seedance 2.0 Fast</option>
         </select>
       </div>
 
       {/* 参考图选择 */}
-      <div className="p-2 border-b">
+      <div className="p-2 border-b border-gray-800">
         <label className="text-sm font-medium">参考图 ({referenceImages.length}/6)</label>
         <div className="mt-1 grid grid-cols-3 gap-1">
           {allAssetImages.slice(0, 18).map((asset) => (
@@ -105,13 +105,13 @@ export default function ParamsPanel({
               onClick={() => asset.image && toggleReferenceImage(asset.image)}
               disabled={!asset.image}
               className={`aspect-square rounded overflow-hidden border-2 transition-colors ${
-                referenceImages.includes(asset.image || '') ? 'border-blue-500 bg-blue-50' : 'border-transparent hover:border-gray-300'
+                referenceImages.includes(asset.image || '') ? 'border-blue-500 bg-blue-900/30' : 'border-transparent hover:border-gray-600'
               } ${!asset.image ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               {asset.image ? (
                 <img src={asset.image} alt={asset.name} className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full bg-gray-100 flex items-center justify-center text-xs text-gray-400">{asset.name.slice(0, 2)}</div>
+                <div className="w-full h-full bg-gray-700 flex items-center justify-center text-xs text-gray-400">{asset.name.slice(0, 2)}</div>
               )}
             </button>
           ))}
@@ -145,37 +145,37 @@ export default function ParamsPanel({
       </div>
 
       {/* 锚定声明预览 */}
-      <div className="p-2 border-b">
+      <div className="p-2 border-b border-gray-800">
         <label className="text-sm font-medium">锚定声明</label>
-        <div className="mt-1 p-2 bg-gray-50 rounded text-sm text-gray-600 min-h-[40px]">{anchorDeclaration || '未选择参考图'}</div>
+        <div className="mt-1 p-2 bg-gray-800 border border-gray-700 rounded text-sm text-gray-300 min-h-[40px]">{anchorDeclaration || '未选择参考图'}</div>
       </div>
 
       {/* 全局提示词预览 */}
-      <div className="p-2 border-b">
+      <div className="p-2 border-b border-gray-800">
         <label className="text-sm font-medium">全局提示词</label>
-        <div className="mt-1 p-2 bg-gray-50 rounded text-sm text-gray-600 min-h-[60px] overflow-auto">{globalPrompt || '未配置'}</div>
+        <div className="mt-1 p-2 bg-gray-800 border border-gray-700 rounded text-sm text-gray-300 min-h-[60px] overflow-auto">{globalPrompt || '未配置'}</div>
       </div>
 
       {/* 最终提示词预览 */}
       <div className="p-2 border-b flex-1 overflow-auto">
         <label className="text-sm font-medium">最终提示词预览</label>
-        <div className="mt-1 p-2 bg-gray-50 rounded text-sm text-gray-600 min-h-[100px] whitespace-pre-wrap overflow-auto">{finalVideoPrompt || '请选择镜头'}</div>
+        <div className="mt-1 p-2 bg-gray-800 border border-gray-700 rounded text-sm text-gray-300 min-h-[100px] whitespace-pre-wrap overflow-auto">{finalVideoPrompt || '请选择镜头'}</div>
       </div>
 
       {/* 生成参数 */}
-      <div className="p-2 border-b">
+      <div className="p-2 border-b border-gray-800">
         <div className="grid grid-cols-2 gap-2 text-sm">
           <div>
             <label className="text-gray-500">时长</label>
-            <select className="w-full mt-1 border rounded px-1 py-1 text-sm focus:outline-none">
+            <select className="w-full mt-1 border border-gray-700 rounded px-1 py-1 text-sm focus:outline-none bg-gray-800 text-gray-200">
               <option>{settings?.default_duration || 4}秒</option>
               <option>3秒</option>
               <option>5秒</option>
             </select>
           </div>
           <div>
-            <label className="text-gray-500">分辨率</label>
-            <select className="w-full mt-1 border rounded px-1 py-1 text-sm focus:outline-none">
+            <label className="text-gray-400">分辨率</label>
+            <select className="w-full mt-1 border border-gray-700 rounded px-1 py-1 text-sm focus:outline-none bg-gray-800 text-gray-200">
               <option>{settings?.default_resolution || '1080p'}</option>
               <option>720p</option>
               <option>4K</option>
@@ -189,12 +189,12 @@ export default function ParamsPanel({
         <button
           onClick={onGenerateVideo}
           disabled={!currentShotId || videoGenerating}
-          className="w-full py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:bg-gray-300"
+          className="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-500 disabled:opacity-50 disabled:bg-gray-700"
         >
           {videoGenerating ? '生成中...' : currentShotId ? `生成镜头 ${currentShotId}` : '请选择镜头'}
         </button>
         <div className="mt-2 flex gap-1">
-          <button disabled={!currentShotId} className="flex-1 py-1 text-xs bg-gray-100 text-gray-600 rounded hover:bg-gray-200 disabled:opacity-50">
+          <button disabled={!currentShotId} className="flex-1 py-1 text-xs bg-gray-700 text-gray-400 rounded hover:bg-gray-600 disabled:opacity-50">
             批量生成 G01（Phase 8）
           </button>
         </div>

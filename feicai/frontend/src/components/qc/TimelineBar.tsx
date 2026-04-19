@@ -29,15 +29,15 @@ export default function TimelineBar({ groups, onScrollToGroup }: TimelineBarProp
   }
 
   return (
-    <div className="border-t bg-gray-50">
+    <div className="border-t border-gray-800 bg-gray-900">
       {/* 折叠控制 */}
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full px-4 py-2 text-sm text-gray-600 flex items-center gap-2 hover:bg-gray-100"
+        className="w-full px-4 py-2 text-sm text-gray-400 flex items-center gap-2 hover:bg-gray-800"
       >
         <span>{expanded ? '▼' : '▶'}</span>
         <span>时间线预览</span>
-        <span className="text-gray-400 ml-auto">总时长: {totalDuration.toFixed(1)}s</span>
+        <span className="text-gray-600 ml-auto">总时长: {totalDuration.toFixed(1)}s</span>
       </button>
 
       {/* 时间线内容 */}

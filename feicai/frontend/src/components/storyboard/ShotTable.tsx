@@ -22,18 +22,18 @@ export default function ShotTable({ shots, groups, onEditShot }: ShotTableProps)
 
   return (
     <table className="w-full border-collapse text-sm">
-      <thead className="bg-gray-50 sticky top-0">
+      <thead className="bg-gray-800 sticky top-0">
         <tr>
-          <th className="border px-2 py-1 text-left w-12">编号</th>
-          <th className="border px-2 py-1 text-left w-16">时段</th>
-          <th className="border px-2 py-1 text-left w-16">组</th>
-          <th className="border px-2 py-1 text-left w-12">类型</th>
-          <th className="border px-2 py-1 text-left w-12">景别</th>
-          <th className="border px-2 py-1 text-left w-16">运镜</th>
-          <th className="border px-2 py-1 text-left">画面内容</th>
-          <th className="border px-2 py-1 text-left">台词</th>
-          <th className="border px-2 py-1 text-left w-12">状态</th>
-          <th className="border px-2 py-1 text-left w-12">操作</th>
+          <th className="border border-gray-700 px-2 py-1 text-left w-12 text-gray-300">编号</th>
+          <th className="border border-gray-700 px-2 py-1 text-left w-16 text-gray-300">时段</th>
+          <th className="border border-gray-700 px-2 py-1 text-left w-16 text-gray-300">组</th>
+          <th className="border border-gray-700 px-2 py-1 text-left w-12 text-gray-300">类型</th>
+          <th className="border border-gray-700 px-2 py-1 text-left w-12 text-gray-300">景别</th>
+          <th className="border border-gray-700 px-2 py-1 text-left w-16 text-gray-300">运镜</th>
+          <th className="border border-gray-700 px-2 py-1 text-left text-gray-300">画面内容</th>
+          <th className="border border-gray-700 px-2 py-1 text-left text-gray-300">台词</th>
+          <th className="border border-gray-700 px-2 py-1 text-left w-12 text-gray-300">状态</th>
+          <th className="border border-gray-700 px-2 py-1 text-left w-12 text-gray-300">操作</th>
         </tr>
       </thead>
       <tbody>
@@ -45,35 +45,35 @@ export default function ShotTable({ shots, groups, onEditShot }: ShotTableProps)
           return (
             <tr
               key={shot.shot_id}
-              className="hover:bg-blue-50 cursor-pointer"
+              className="hover:bg-gray-800 cursor-pointer border-b border-gray-800"
               onClick={() => onEditShot(shot.shot_id)}
             >
-              <td className="border px-2 py-1">{shot.shot_id}</td>
-              <td className="border px-2 py-1">{timeStr}</td>
-              <td className="border px-2 py-1">
+              <td className="border border-gray-800 px-2 py-1">{shot.shot_id}</td>
+              <td className="border border-gray-800 px-2 py-1">{timeStr}</td>
+              <td className="border border-gray-800 px-2 py-1">
                 <span
                   className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
                     groupColor === 'green'
-                      ? 'bg-green-100 text-green-700'
+                      ? 'bg-green-900/50 text-green-400'
                       : groupColor === 'yellow'
-                      ? 'bg-yellow-100 text-yellow-700'
-                      : 'bg-red-100 text-red-700'
+                      ? 'bg-yellow-900/50 text-yellow-400'
+                      : 'bg-red-900/50 text-red-400'
                   }`}
                 >
                   {shot.group_id}
                 </span>
               </td>
-              <td className="border px-2 py-1">{shot.shot_type}</td>
-              <td className="border px-2 py-1">{shot.shot_size}</td>
-              <td className="border px-2 py-1">{shot.camera_move}</td>
-              <td className="border px-2 py-1 truncate max-w-xs">{shot.frame_action}</td>
-              <td className="border px-2 py-1 truncate max-w-xs">{speechSummary}</td>
-              <td className="border px-2 py-1">
+              <td className="border border-gray-800 px-2 py-1">{shot.shot_type}</td>
+              <td className="border border-gray-800 px-2 py-1">{shot.shot_size}</td>
+              <td className="border border-gray-800 px-2 py-1">{shot.camera_move}</td>
+              <td className="border border-gray-800 px-2 py-1 truncate max-w-xs">{shot.frame_action}</td>
+              <td className="border border-gray-800 px-2 py-1 truncate max-w-xs">{speechSummary}</td>
+              <td className="border border-gray-800 px-2 py-1">
                 <span className="text-gray-400">待生成</span>
               </td>
-              <td className="border px-2 py-1">
+              <td className="border border-gray-800 px-2 py-1">
                 <button
-                  className="text-blue-500 hover:underline"
+                  className="text-blue-400 hover:underline"
                   onClick={(e) => {
                     e.stopPropagation()
                     onEditShot(shot.shot_id)

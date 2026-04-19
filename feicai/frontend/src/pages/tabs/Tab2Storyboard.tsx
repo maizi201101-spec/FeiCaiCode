@@ -132,14 +132,14 @@ export default function Tab2Storyboard({ projectId, episodeId }: Tab2StoryboardP
       {/* 主内容区 */}
       <div className="flex-1 overflow-hidden">
         {/* 工具栏 */}
-        <div className="flex items-center justify-between p-4 border-b bg-white">
+        <div className="flex items-center justify-between p-4 border-b border-gray-800 bg-gray-900">
           <div className="flex items-center gap-4">
             {/* 视图切换 */}
             <div className="flex gap-2">
               <button
                 onClick={() => setViewMode('table')}
                 className={`px-3 py-1 rounded ${
-                  viewMode === 'table' ? 'bg-blue-500 text-white' : 'bg-gray-100'
+                  viewMode === 'table' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'
                 }`}
               >
                 表格视图
@@ -147,7 +147,7 @@ export default function Tab2Storyboard({ projectId, episodeId }: Tab2StoryboardP
               <button
                 onClick={() => setViewMode('group')}
                 className={`px-3 py-1 rounded ${
-                  viewMode === 'group' ? 'bg-blue-500 text-white' : 'bg-gray-100'
+                  viewMode === 'group' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'
                 }`}
               >
                 组视图
@@ -166,20 +166,20 @@ export default function Tab2Storyboard({ projectId, episodeId }: Tab2StoryboardP
             <button
               onClick={handleExtractAssets}
               disabled={extractingAssets || generating}
-              className="px-3 py-1 bg-teal-500 text-white rounded disabled:bg-gray-300 text-sm"
+              className="px-3 py-1 bg-teal-600 text-white rounded disabled:bg-gray-700 text-sm"
             >
               {extractingAssets ? '提取中...' : '提取资产'}
             </button>
             <button
               onClick={refetch}
-              className="px-3 py-1 bg-gray-100 rounded"
+              className="px-3 py-1 bg-gray-700 text-gray-300 rounded hover:bg-gray-600"
             >
               刷新
             </button>
             <button
               onClick={handlePlanShots}
               disabled={generating}
-              className="px-3 py-1 bg-blue-500 text-white rounded disabled:bg-gray-300"
+              className="px-3 py-1 bg-blue-600 text-white rounded disabled:bg-gray-700"
             >
               {generating ? '规划中...' : '重新规划'}
             </button>
