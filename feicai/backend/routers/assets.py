@@ -5,7 +5,7 @@ import json
 
 from schemas.assets_schema import (
     AssetsCollection, AssetCreate, AssetUpdate, AssetResponse,
-    AssetType, ExtractRequest, ExtractProgress
+    AssetType, ExtractRequest, ExtractProgress, Variant
 )
 from services.asset_service import (
     read_assets, write_assets, add_asset, update_asset, delete_asset,
@@ -31,6 +31,7 @@ def asset_to_response(asset_type: AssetType, asset: dict) -> AssetResponse:
         time_of_day=asset.get("time_of_day"),
         lighting=asset.get("lighting"),
         tags=asset.get("tags", []),
+        needs_review=asset.get("needs_review", False),
         variants=asset.get("variants", []),
         base_asset=asset.get("base_asset"),
         images=asset.get("images", []),
@@ -129,38 +130,52 @@ async def delete_asset_api(project_id: int, asset_type: AssetType, asset_id: str
 
 @router.post("/projects/{project_id}/assets/extract")
 async def extract_assets(project_id: int, payload: ExtractRequest):
-    """AI 提取资产"""
+    """AI 提取资产（串行，每集带上一集梗概 + 当前资产库作为上下文）"""
     project_path = await get_project_path(project_id)
     if not project_path:
         raise HTTPException(404, "项目不存在")
 
     results: List[ExtractProgress] = []
 
-    # 逐集提取
+    # 读取初始资产库
+    current_assets = await read_assets(project_id)
+    prev_summary: Optional[str] = None
+
+    # 串行逐集提取：第 N 集完成后才处理第 N+1 集
     for episode_id in payload.episode_ids:
-        progress = await extract_assets_from_episode(episode_id, project_id)
+        progress = await extract_assets_from_episode(
+            episode_id, project_id,
+            prev_summary=prev_summary,
+            existing=current_assets,
+        )
         results.append(progress)
 
-    # 合并到现有资产库
-    if payload.merge_mode:
-        existing = await read_assets(project_id)
+        if progress.status == "completed" and payload.merge_mode:
+            # 先注入本集识别的 new_variant 到全局库中的父资产
+            if progress.pending_variants:
+                for parent_id, new_variants in progress.pending_variants.items():
+                    for asset_list in [current_assets.characters, current_assets.scenes, current_assets.props]:
+                        for asset in asset_list:
+                            if asset.asset_id == parent_id:
+                                existing_vids = {v.variant_id for v in asset.variants}
+                                for nv in new_variants:
+                                    if nv.variant_id not in existing_vids:
+                                        asset.variants.append(nv)
 
-        all_chars = []
-        all_scenes = []
-        all_props = []
+            # 合并新提取的资产到全局库
+            current_assets = merge_assets(
+                current_assets,
+                progress.characters,
+                progress.scenes,
+                progress.props,
+            )
+            await write_assets(project_id, current_assets)
 
-        for r in results:
-            if r.status == "completed":
-                # 从 ExtractProgress 的额外字段获取资产
-                all_chars.extend(r.characters if hasattr(r, 'characters') else [])
-                all_scenes.extend(r.scenes if hasattr(r, 'scenes') else [])
-                all_props.extend(r.props if hasattr(r, 'props') else [])
+        # 更新上一集梗概（无论成功失败，失败则保持 None 或上一个有效梗概）
+        if progress.summary:
+            prev_summary = progress.summary
 
-        if all_chars or all_scenes or all_props:
-            merged = merge_assets(existing, all_chars, all_scenes, all_props)
-            await write_assets(project_id, merged)
-
-    return {"results": [r.model_dump(exclude={'characters', 'scenes', 'props'}) for r in results]}
+    return {"results": [r.model_dump(exclude={"characters", "scenes", "props", "pending_variants"}) for r in results]}
 
 
 @router.get("/projects/{project_id}/episodes/{episode_id}/assets")

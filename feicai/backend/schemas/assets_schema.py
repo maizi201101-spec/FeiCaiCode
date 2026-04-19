@@ -27,8 +27,9 @@ class Character(BaseModel):
     outfit: Optional[str] = None
     base_asset: Optional[str] = None
     tags: List[str] = []
+    needs_review: bool = False
     variants: List[Variant] = []
-    images: List[str] = []  # 设定图路径列表（Phase 5 扩展）
+    images: List[str] = []
 
 
 class Scene(BaseModel):
@@ -39,6 +40,8 @@ class Scene(BaseModel):
     visual_elements: List[str] = []
     time_of_day: Optional[str] = None
     lighting: Optional[str] = None
+    tags: List[str] = []
+    needs_review: bool = False
     variants: List[Variant] = []
     images: List[str] = []
 
@@ -48,6 +51,8 @@ class Prop(BaseModel):
     asset_id: str
     name: str
     description: Optional[str] = None
+    tags: List[str] = []
+    needs_review: bool = False
     variants: List[Variant] = []
     images: List[str] = []
 
@@ -89,6 +94,7 @@ class AssetUpdate(BaseModel):
     time_of_day: Optional[str] = None
     lighting: Optional[str] = None
     tags: Optional[List[str]] = None
+    needs_review: Optional[bool] = None
     variants: Optional[List[Variant]] = None
     base_asset: Optional[str] = None
 
@@ -107,6 +113,7 @@ class AssetResponse(BaseModel):
     time_of_day: Optional[str] = None
     lighting: Optional[str] = None
     tags: List[str] = []
+    needs_review: bool = False
     variants: List[Variant] = []
     base_asset: Optional[str] = None
     images: List[str] = []
@@ -132,3 +139,5 @@ class ExtractProgress(BaseModel):
     characters: List[Character] = []
     scenes: List[Scene] = []
     props: List[Prop] = []
+    # new_variant 类型识别出的变体，格式 {parent_asset_id: [Variant]}（内部流转）
+    pending_variants: dict = {}

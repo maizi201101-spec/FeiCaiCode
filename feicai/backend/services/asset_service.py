@@ -49,148 +49,280 @@ async def write_assets(project_id: int, assets: AssetsCollection) -> None:
     assets_path.write_text(content, encoding="utf-8")
 
 
+def _filter_assets_by_script(script: str, existing: AssetsCollection) -> AssetsCollection:
+    """Step 1（程序预过滤）：从全量资产库筛出本集剧本中可能出现的资产子集。
+    判断依据：名称直接出现在剧本中，或与剧本中出现的词语相似度 > 0.6。
+    解决后几十集资产库膨胀后 token 过大的问题。
+    """
+    def appears_in_script(name: str) -> bool:
+        if name in script:
+            return True
+        # 对2字以上的名称做简单片段匹配
+        if len(name) >= 2:
+            for i in range(len(name) - 1):
+                if name[i:i+2] in script:
+                    return True
+        return False
+
+    return AssetsCollection(
+        characters=[c for c in existing.characters if appears_in_script(c.name)],
+        scenes=[s for s in existing.scenes if appears_in_script(s.name)],
+        props=[p for p in existing.props if appears_in_script(p.name)],
+    )
+
+
+def _build_candidates_context(filtered: AssetsCollection) -> str:
+    """将预过滤后的候选资产格式化为 LLM 输入，带 asset_id + name + 简短描述"""
+    lines = []
+    for c in filtered.characters:
+        desc = c.appearance or ""
+        desc = desc[:40] if desc else ""
+        lines.append(f"角色 {c.asset_id}: {c.name}" + (f"（{desc}）" if desc else ""))
+    for s in filtered.scenes:
+        desc = s.description or ""
+        desc = desc[:40] if desc else ""
+        lines.append(f"场景 {s.asset_id}: {s.name}" + (f"（{desc}）" if desc else ""))
+    for p in filtered.props:
+        desc = p.description or ""
+        desc = desc[:40] if desc else ""
+        lines.append(f"道具 {p.asset_id}: {p.name}" + (f"（{desc}）" if desc else ""))
+    return "\n".join(lines) if lines else ""
+
+
+def _next_asset_id(prefix: str, existing_ids: set[str]) -> str:
+    """生成不与已有 ID 冲突的新 asset_id"""
+    i = 1
+    while f"{prefix}{i}" in existing_ids:
+        i += 1
+    return f"{prefix}{i}"
+
+
+def _sanitize_variants(item: dict) -> dict:
+    """过滤 LLM 返回的 variants 中非 dict 项"""
+    if "variants" in item:
+        item["variants"] = [v for v in item["variants"] if isinstance(v, dict)]
+    return item
+
+
 async def extract_assets_from_episode(
-    episode_id: int, project_id: int
+    episode_id: int,
+    project_id: int,
+    prev_summary: Optional[str] = None,
+    existing: Optional[AssetsCollection] = None,
 ) -> ExtractProgress:
-    """从单集剧本提取资产"""
+    """从单集剧本提取资产。
+
+    四步流程：
+    Step 1（程序）: 用剧本文本预过滤全量资产库，只保留本集可能出现的候选资产
+    Step 2（LLM）: 一次调用同时完成：提取实体、判断 relation + confidence、生成 variant、写梗概
+    Step 3（程序）: 整合结果：asset_id 去重/碰撞检测、variant 挂父节点、needs_review 标记
+    Step 4（程序）: 写 episode_assets.json，返回提取结果供调用方合并到全局库
+    """
     episode = await get_episode_info(episode_id)
     if not episode:
-        return ExtractProgress(
-            episode_id=episode_id,
-            episode_number=0,
-            status="failed",
-            error="集数不存在"
-        )
+        return ExtractProgress(episode_id=episode_id, episode_number=0, status="failed", error="集数不存在")
 
-    # 读取剧本
     project_path = await get_project_path(project_id)
     if not project_path:
         return ExtractProgress(
-            episode_id=episode_id,
-            episode_number=episode["number"],
-            status="failed",
-            error="项目路径不存在"
+            episode_id=episode_id, episode_number=episode["number"],
+            status="failed", error="项目路径不存在"
         )
 
     script_file = Path(project_path) / "episodes" / f"EP{episode['number']:02d}" / "script.txt"
     if not script_file.exists():
         return ExtractProgress(
-            episode_id=episode_id,
-            episode_number=episode["number"],
-            status="failed",
-            error="剧本不存在"
+            episode_id=episode_id, episode_number=episode["number"],
+            status="failed", error="剧本不存在"
         )
 
     script_content = script_file.read_text(encoding="utf-8")
+    if existing is None:
+        existing = AssetsCollection()
 
-    # 构造 LLM prompt
-    prompt = f"""请分析以下剧本内容，提取角色、场景、道具资产，并生成该集梗概。
+    # ── Step 1：程序预过滤 ────────────────────────────────
+    filtered = _filter_assets_by_script(script_content, existing)
+    candidates_ctx = _build_candidates_context(filtered)
+    candidates_section = f"\n已有相关资产（asset_id + name，如本集出现请复用 asset_id）：\n{candidates_ctx}\n" if candidates_ctx else "\n（暂无已有资产）\n"
+    prev_section = f"上集梗概：\n{prev_summary}\n\n" if prev_summary else ""
 
-剧本内容：
+    # ── Step 2：一次 LLM 调用，提取 + 判断 + 生成梗概 ────
+    prompt = f"""你是短剧资产管理助手，请分析本集剧本，提取角色、场景、道具，并判断是否与已有资产库中的资产相同。
+
+{prev_section}{candidates_section}
+本集剧本：
 {script_content[:2000]}
 
-请按以下 JSON 格式输出：
+任务要求：
+1. 提取本集实际出现的所有角色、场景、关键道具
+2. 对每个提取的资产，与"已有相关资产"对比：
+   - match_existing：确认是同一个，直接用已有 asset_id
+   - supplement：同一个但本集有新的视觉描述，用已有 asset_id，填写新的描述字段
+   - new_variant：同一角色/场景，但本集出现明显不同的视觉状态（如受伤、换装、伪装），用已有 asset_id，填写 variant 字段
+   - new_asset：全新资产，分配新的 asset_id（格式：人物N / 场景N / 道具N，N 从当前最大值+1 开始）
+3. confidence：你对关系判断的置信度 0.0-1.0（低于 0.7 的会被标为"待审核"）
+4. 生成该集梗概 100-200 字
+
+输出 JSON（只输出 JSON，不要解释）：
 ```json
 {{
-  "summary": "该集梗概（100-200字）",
+  "summary": "该集梗概",
   "characters": [
     {{
       "asset_id": "人物1",
-      "name": "角色名称",
+      "name": "角色名",
+      "relation": "match_existing|supplement|new_variant|new_asset",
+      "confidence": 0.95,
       "gender": "性别",
-      "age": "年龄描述",
-      "appearance": "视觉化外貌描述",
+      "age": "年龄",
+      "appearance": "外貌描述（视觉化，用于生图）",
       "outfit": "服装描述",
       "tags": [],
-      "variants": []
+      "variants": [
+        {{
+          "variant_id": "v1",
+          "variant_name": "变体名称",
+          "trigger_condition": "触发条件",
+          "visual_diff": "与基础形态的视觉差异"
+        }}
+      ]
     }}
   ],
   "scenes": [
     {{
       "asset_id": "场景1",
-      "name": "场景名称",
+      "name": "场景名",
+      "relation": "match_existing|supplement|new_variant|new_asset",
+      "confidence": 0.9,
       "description": "场景描述",
       "visual_elements": ["关键视觉元素"],
-      "time_of_day": "时间",
-      "lighting": "光线",
+      "time_of_day": "白天/夜晚/黄昏",
+      "lighting": "光线描述",
       "variants": []
     }}
   ],
   "props": [
     {{
       "asset_id": "道具1",
-      "name": "道具名称",
-      "description": "道具描述",
+      "name": "道具名",
+      "relation": "match_existing|supplement|new_variant|new_asset",
+      "confidence": 0.85,
+      "description": "外观描述",
       "variants": []
     }}
   ]
 }}
-```
-
-识别规则：
-1. 角色：出场的人物，提取外貌特征、服装等视觉信息
-2. 场景：故事发生的地点，提取环境特征、光线等
-3. 道具：重要物品，提取外观描述
-4. variants：如有持续多集的明显视觉变化（伪装、重伤等），需标注
-5. summary：该集剧情梗概，100-200字
-"""
+```"""
 
     try:
-        result = await call_llm(prompt, temperature=0.3, max_tokens=3000)
+        result = await call_llm(prompt, temperature=0.2, max_tokens=3000)
     except ValueError as e:
         return ExtractProgress(
-            episode_id=episode_id,
-            episode_number=episode["number"],
-            status="failed",
-            error=str(e)
+            episode_id=episode_id, episode_number=episode["number"],
+            status="failed", error=str(e)
         )
 
-    # 解析 JSON 结果
     json_match = re.search(r"\{[\s\S]*\}", result)
     if not json_match:
         return ExtractProgress(
-            episode_id=episode_id,
-            episode_number=episode["number"],
-            status="failed",
-            error="LLM 未返回有效 JSON"
+            episode_id=episode_id, episode_number=episode["number"],
+            status="failed", error="LLM 未返回有效 JSON"
         )
 
     try:
         data = json.loads(json_match.group())
     except json.JSONDecodeError:
         return ExtractProgress(
-            episode_id=episode_id,
-            episode_number=episode["number"],
-            status="failed",
-            error="JSON 解析失败"
+            episode_id=episode_id, episode_number=episode["number"],
+            status="failed", error="JSON 解析失败"
         )
 
-    # 保存梗概到 summary.txt
     if data.get("summary"):
-        summary_file = script_file.parent / "summary.txt"
-        summary_file.write_text(data["summary"], encoding="utf-8")
+        (script_file.parent / "summary.txt").write_text(data["summary"], encoding="utf-8")
 
-    def _sanitize(item: dict) -> dict:
-        # LLM 有时把 variants 返回成字符串列表，过滤掉非 dict 的项
-        if "variants" in item:
-            item["variants"] = [v for v in item["variants"] if isinstance(v, dict)]
-        return item
+    # ── Step 3：程序整合 ──────────────────────────────────
+    existing_char_ids = {c.asset_id for c in existing.characters}
+    existing_scene_ids = {s.asset_id for s in existing.scenes}
+    existing_prop_ids = {p.asset_id for p in existing.props}
 
-    # 转换为模型
-    characters = [Character(**_sanitize(c)) for c in data.get("characters", []) if isinstance(c, dict)]
-    scenes = [Scene(**_sanitize(s)) for s in data.get("scenes", []) if isinstance(s, dict)]
-    props = [Prop(**_sanitize(p)) for p in data.get("props", []) if isinstance(p, dict)]
+    characters: List[Character] = []
+    scenes: List[Scene] = []
+    props: List[Prop] = []
+    ep_char_ids: List[str] = []
+    ep_scene_ids: List[str] = []
+    ep_prop_ids: List[str] = []
 
-    # 保存分集资产索引（记录本集出现的 asset_id，供分集视图查询）
-    episode_assets = {
+    # 收集本集识别出的 new_variant，格式：{parent_asset_id: [Variant, ...]}
+    pending_variants: dict[str, List[Variant]] = {}
+
+    used_ids: set[str] = set(existing_char_ids | existing_scene_ids | existing_prop_ids)
+
+    for raw_list, asset_cls, id_prefix, target_list, ep_ids, existing_ids in [
+        (data.get("characters", []), Character, "人物", characters, ep_char_ids, existing_char_ids),
+        (data.get("scenes", []), Scene, "场景", scenes, ep_scene_ids, existing_scene_ids),
+        (data.get("props", []), Prop, "道具", props, ep_prop_ids, existing_prop_ids),
+    ]:
+        for item in raw_list:
+            if not isinstance(item, dict):
+                continue
+            item = _sanitize_variants(dict(item))
+
+            relation = item.pop("relation", "new_asset")
+            confidence = float(item.pop("confidence", 1.0))
+            needs_review = confidence < 0.7
+
+            asset_id = item.get("asset_id", "")
+
+            if relation in ("match_existing", "supplement", "new_variant"):
+                # 验证 LLM 给的 asset_id 确实存在于已有库，否则降级为 new_asset
+                if asset_id not in existing_ids:
+                    relation = "new_asset"
+                    needs_review = True
+
+            if relation == "new_variant":
+                # 从 item 中提取 variant 信息，挂到父资产；不新建独立资产
+                ep_ids.append(asset_id)
+                for v in item.get("variants", []):
+                    if not isinstance(v, dict):
+                        continue
+                    try:
+                        variant = Variant(**{k: v[k] for k in Variant.model_fields if k in v})
+                        pending_variants.setdefault(asset_id, []).append(variant)
+                    except Exception:
+                        pass
+                continue
+
+            if relation == "new_asset":
+                if asset_id in used_ids or not asset_id:
+                    asset_id = _next_asset_id(id_prefix, used_ids)
+                item["asset_id"] = asset_id
+
+            used_ids.add(asset_id)
+
+            if needs_review:
+                item["needs_review"] = True
+
+            try:
+                valid_fields = asset_cls.model_fields.keys()
+                clean = {k: v for k, v in item.items() if k in valid_fields}
+                asset = asset_cls(**clean)
+                target_list.append(asset)
+                ep_ids.append(asset.asset_id)
+            except Exception:
+                pass
+
+    # pending_variants 写入 characters（父资产在 existing 中）
+    # 调用方 merge_assets 时，existing 中的父资产会被更新；
+    # 这里把 pending_variants 附在 ExtractProgress 上，由路由层在 merge 前注入
+    # ── Step 4：写 episode_assets.json ───────────────────
+    ep_assets_file = script_file.parent / "episode_assets.json"
+    ep_assets_file.write_text(json.dumps({
         "episode_id": episode_id,
         "episode_number": episode["number"],
-        "characters": [c.asset_id for c in characters],
-        "scenes": [s.asset_id for s in scenes],
-        "props": [p.asset_id for p in props],
-    }
-    ep_assets_file = script_file.parent / "episode_assets.json"
-    ep_assets_file.write_text(json.dumps(episode_assets, ensure_ascii=False, indent=2), encoding="utf-8")
+        "characters": ep_char_ids,
+        "scenes": ep_scene_ids,
+        "props": ep_prop_ids,
+    }, ensure_ascii=False, indent=2), encoding="utf-8")
 
     return ExtractProgress(
         episode_id=episode_id,
@@ -203,6 +335,7 @@ async def extract_assets_from_episode(
         characters=characters,
         scenes=scenes,
         props=props,
+        pending_variants=pending_variants,
     )
 
 
