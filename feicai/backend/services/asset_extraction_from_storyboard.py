@@ -5,7 +5,7 @@
 
 import json
 from pathlib import Path
-from typing import List, Dict, Optional, Set, Tuple
+from typing import List, Dict, Optional, Set
 
 from schemas.assets_schema import Character, Scene, Prop, AssetsCollection, Variant
 from services.script_service import get_episode_info, get_project_path
@@ -167,19 +167,15 @@ async def generate_assets_from_collapsed_refs(
             existing_variant_names = {v.variant_name for v in char.variants}
 
             for costume in costumes:
-                if costume not in existing_variant_names:
-                    # 生成 variant_id
-                    existing_variant_ids = {v.variant_id for v in char.variants}
-                    variant_num = len(char.variants) + 1
-                    while f"v{variant_num}" in existing_variant_ids:
-                        variant_num += 1
-
-                    char.variants.append(Variant(
-                        variant_id=f"v{variant_num}",
-                        variant_name=costume,
-                        trigger_condition=f"角色穿着{costume}",
-                        visual_diff=f"装扮：{costume}"
-                    ))
+                # 跳过已是 base outfit 或已有 variant 的装扮
+                if costume == char.outfit or costume in existing_variant_names:
+                    continue
+                char.variants.append(Variant(
+                    variant_id=costume,
+                    variant_name=costume,
+                    trigger_condition=f"角色穿着{costume}",
+                    visual_diff=f"装扮：{costume}"
+                ))
 
             final_chars.append(char)
         else:
@@ -187,28 +183,43 @@ async def generate_assets_from_collapsed_refs(
             asset_id = _next_asset_id("人物", existing_ids)
             existing_ids.add(asset_id)
 
-            variants = [
-                Variant(
-                    variant_id=f"v{i+1}",
-                    variant_name=costume,
-                    trigger_condition=f"角色穿着{costume}",
-                    visual_diff=f"装扮：{costume}"
-                )
-                for i, costume in enumerate(costumes)
-            ]
-
-            final_chars.append(Character(
-                asset_id=asset_id,
-                name=name,
-                appearance=f"{name}的外观描述（待补充）",
-                gender="",
-                age="",
-                outfit="",
-                variants=variants,
-                tags=[],
-                images=[],
-                needs_review=True
-            ))
+            if len(costumes) == 1:
+                # 只有一种装扮 -> 直接作为 base outfit，不创建 variant
+                final_chars.append(Character(
+                    asset_id=asset_id,
+                    name=name,
+                    appearance=f"{name}的外观描述（待补充）",
+                    gender="",
+                    age="",
+                    outfit=costumes[0],  # 唯一装扮作为 base outfit
+                    variants=[],
+                    tags=[],
+                    images=[],
+                    needs_review=True
+                ))
+            else:
+                # 多种装扮 -> 每种装扮建一个 variant，variant_id = 装扮 label
+                variants = [
+                    Variant(
+                        variant_id=costume,
+                        variant_name=costume,
+                        trigger_condition=f"角色穿着{costume}",
+                        visual_diff=f"装扮：{costume}"
+                    )
+                    for costume in costumes
+                ]
+                final_chars.append(Character(
+                    asset_id=asset_id,
+                    name=name,
+                    appearance=f"{name}的外观描述（待补充）",
+                    gender="",
+                    age="",
+                    outfit="",
+                    variants=variants,
+                    tags=[],
+                    images=[],
+                    needs_review=True
+                ))
 
     # 处理场景（无 variant）
     for scene_data in collapsed_refs.get("scenes", []):
