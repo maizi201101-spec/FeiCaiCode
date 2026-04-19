@@ -1,25 +1,35 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useProjects } from '../hooks/useProjects'
+import { getSystemSettings } from '../api/systemSettings'
 
 export default function HomePage() {
   const navigate = useNavigate()
   const { projects, loading, createProject } = useProjects()
   const [showModal, setShowModal] = useState(false)
   const [formName, setFormName] = useState('')
-  const [formPath, setFormPath] = useState('')
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [projectsRoot, setProjectsRoot] = useState<string>('')
+  const [noRootWarning, setNoRootWarning] = useState(false)
+
+  // 加载项目区路径
+  useEffect(() => {
+    getSystemSettings().then(settings => {
+      setProjectsRoot(settings.projects_root_path || '')
+      setNoRootWarning(!settings.projects_root_path)
+    }).catch(() => {})
+  }, [])
 
   async function handleCreate() {
-    if (!formName.trim() || !formPath.trim()) return
+    if (!formName.trim()) return
     setCreating(true)
     setError(null)
     try {
-      const project = await createProject({ name: formName.trim(), path: formPath.trim() })
+      // 使用项目名作为路径（如果不是绝对路径，后端会在项目区下创建）
+      const project = await createProject({ name: formName.trim(), path: formName.trim() })
       setShowModal(false)
       setFormName('')
-      setFormPath('')
       navigate(`/project/${project.id}`)
     } catch (e) {
       setError(e instanceof Error ? e.message : '创建项目失败')
@@ -45,6 +55,13 @@ export default function HomePage() {
           + 新建项目
         </button>
       </header>
+
+      {/* 项目区提示 */}
+      {noRootWarning && (
+        <div className="px-6 py-3 bg-yellow-900/20 border-b border-yellow-900/30 text-yellow-400 text-sm">
+          ⚠ 未配置项目区路径，请先在「设置」页面配置，否则新建项目需要输入完整路径
+        </div>
+      )}
 
       {/* 主内容 */}
       <main className="p-6">
@@ -91,17 +108,11 @@ export default function HomePage() {
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:border-indigo-500"
                   autoFocus
                 />
-              </div>
-              <div>
-                <label className="text-sm text-gray-400 mb-1 block">存储路径</label>
-                <input
-                  type="text"
-                  value={formPath}
-                  onChange={(e) => { setFormPath(e.target.value); setError(null) }}
-                  placeholder="例：/Users/jm02/TongBu/我的项目"
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:border-indigo-500"
-                />
-                <p className="text-xs text-gray-600 mt-1">项目文件将保存到此目录（会自动创建）</p>
+                {projectsRoot && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    项目将保存到: {projectsRoot}/{formName || '项目名'}
+                  </p>
+                )}
               </div>
 
               {/* 错误提示 */}
@@ -114,14 +125,14 @@ export default function HomePage() {
 
             <div className="flex gap-3 mt-6">
               <button
-                onClick={() => { setShowModal(false); setFormName(''); setFormPath(''); setError(null) }}
+                onClick={() => { setShowModal(false); setFormName(''); setError(null) }}
                 className="flex-1 border border-gray-700 text-gray-300 text-sm px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors"
               >
                 取消
               </button>
               <button
                 onClick={handleCreate}
-                disabled={!formName.trim() || !formPath.trim() || creating}
+                disabled={!formName.trim() || creating}
                 className="flex-1 bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm px-4 py-2 rounded-lg transition-colors"
               >
                 {creating ? '创建中...' : '创建项目'}

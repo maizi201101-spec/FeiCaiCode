@@ -2,8 +2,9 @@ from fastapi import APIRouter, HTTPException, Depends
 from typing import List
 import aiosqlite
 from datetime import datetime
+from pathlib import Path
 
-from database import get_db
+from database import get_db, DB_PATH
 from schemas.project import (
     ProjectCreate, ProjectUpdate, ProjectResponse,
     EpisodeCreate, EpisodeUpdate, EpisodeResponse,
@@ -17,23 +18,48 @@ def _now() -> str:
     return datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
 
 
+async def get_projects_root() -> str | None:
+    """获取项目区路径"""
+    async with aiosqlite.connect(DB_PATH) as db:
+        cursor = await db.execute(
+            "SELECT value FROM settings WHERE key = 'projects_root_path'"
+        )
+        row = await cursor.fetchone()
+        return row[0] if row and row[0] else None
+
+
 # ── Projects ──────────────────────────────────────────────────────────────────
 
 @router.post("/", response_model=ProjectResponse)
 async def create_project(project: ProjectCreate, db=Depends(get_db)):
+    """创建项目
+
+    如果 project.path 是相对路径或仅是项目名，则自动在项目区下创建子文件夹
+    如果 project.path 是绝对路径，则直接使用该路径
+    """
     async with db as conn:
         now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
 
-        # 先创建项目目录结构
+        # 确定项目路径
+        project_path = project.path
+
+        # 如果不是绝对路径，则在项目区下创建
+        if not project_path.startswith('/'):
+            projects_root = await get_projects_root()
+            if not projects_root:
+                raise HTTPException(400, "请先在设置页面配置项目区路径，或输入完整路径")
+            project_path = str(Path(projects_root) / project_path)
+
+        # 创建项目目录结构
         try:
-            init_project_dirs(project.path)
+            init_project_dirs(project_path)
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"无法创建项目目录: {str(e)}")
 
         try:
             cursor = await conn.execute(
                 "INSERT INTO projects (name, path, created_at, updated_at) VALUES (?, ?, ?, ?)",
-                (project.name, project.path, now, now),
+                (project.name, project_path, now, now),
             )
             await conn.commit()
             row = await (await conn.execute(

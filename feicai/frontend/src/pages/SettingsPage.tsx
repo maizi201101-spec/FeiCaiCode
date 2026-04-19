@@ -14,9 +14,11 @@ import GlobalPromptConfig from '../components/settings/GlobalPromptConfig'
 import VideoParamsConfig from '../components/settings/VideoParamsConfig'
 import PresetsConfig from '../components/settings/PresetsConfig'
 import ProvidersConfig from '../components/settings/ProvidersConfig'
+import SystemConfig from '../components/settings/SystemConfig'
 
 // 设置分类
 const SETTING_CATEGORIES = [
+  { key: 'system', label: '系统', icon: '📁' },
   { key: 'llm', label: 'LLM 配置', icon: '🤖' },
   { key: 'image', label: '图片模型', icon: '🖼' },
   { key: 'video', label: '视频模型', icon: '🎬' },
@@ -31,7 +33,7 @@ export default function SettingsPage() {
   const { settings, loading, error, save } = useGlobalSettings(projectId)
   const [localSettings, setLocalSettings] = useState<GlobalSettings | null>(null)
   const [saving, setSaving] = useState(false)
-  const [activeCategory, setActiveCategory] = useState('llm')
+  const [activeCategory, setActiveCategory] = useState('system')
 
   // 从远程 settings 初始化本地状态
   useEffect(() => {
@@ -87,17 +89,19 @@ export default function SettingsPage() {
             项目 #{projectId} 设置
           </span>
         </div>
-        <button
-          onClick={handleSave}
-          disabled={saving || !localSettings}
-          className={`px-4 py-2 rounded text-sm font-medium ${
-            saving || !localSettings
-              ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
-              : 'bg-indigo-600 text-white hover:bg-indigo-500'
-          }`}
-        >
-          {saving ? '保存中...' : '保存设置'}
-        </button>
+        {activeCategory !== 'system' && (
+          <button
+            onClick={handleSave}
+            disabled={saving || !localSettings}
+            className={`px-4 py-2 rounded text-sm font-medium ${
+              saving || !localSettings
+                ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
+                : 'bg-indigo-600 text-white hover:bg-indigo-500'
+            }`}
+          >
+            {saving ? '保存中...' : '保存设置'}
+          </button>
+        )}
       </header>
 
       {/* 主体区域：左右分栏 */}
@@ -124,6 +128,9 @@ export default function SettingsPage() {
 
         {/* 右侧内容区 */}
         <main className="flex-1 p-6 overflow-y-auto">
+          {activeCategory === 'system' && (
+            <SystemConfig projectId={projectId} />
+          )}
           {activeCategory === 'llm' && (
             <LLMConfig settings={localSettings} onChange={setLocalSettings} projectId={projectId} />
           )}
