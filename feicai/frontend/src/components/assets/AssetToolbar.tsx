@@ -8,8 +8,10 @@ interface AssetToolbarProps {
   searchQuery: string
   onSearchChange: (query: string) => void
   onExtractClick: () => void
+  onBatchExtractClick: () => void
   onAddClick: () => void
   extracting: boolean
+  batchExtracting: boolean
 }
 
 export default function AssetToolbar({
@@ -20,8 +22,10 @@ export default function AssetToolbar({
   searchQuery,
   onSearchChange,
   onExtractClick,
+  onBatchExtractClick,
   onAddClick,
   extracting,
+  batchExtracting,
 }: AssetToolbarProps) {
   return (
     <div className="flex items-center gap-4 p-4 border-b border-gray-800 bg-gray-950">
@@ -104,8 +108,15 @@ export default function AssetToolbar({
 
       {/* 操作按钮 */}
       <button
+        onClick={onBatchExtractClick}
+        disabled={batchExtracting || extracting}
+        className="px-3 py-1.5 bg-orange-600 hover:bg-orange-500 disabled:bg-gray-700 text-white text-sm rounded-lg transition-colors whitespace-nowrap"
+      >
+        {batchExtracting ? '批量提取中...' : '全集批量提取'}
+      </button>
+      <button
         onClick={onExtractClick}
-        disabled={extracting}
+        disabled={extracting || batchExtracting}
         className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-gray-700 text-white text-sm rounded-lg transition-colors"
       >
         {extracting ? '提取中...' : '提取资产'}

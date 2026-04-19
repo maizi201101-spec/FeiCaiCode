@@ -2,12 +2,13 @@ import { useState } from 'react'
 import AssetToolbar from '../../components/assets/AssetToolbar'
 import AssetGrid from '../../components/assets/AssetGrid'
 import { useAssets } from '../../hooks/useAssets'
+import { useEpisodes } from '../../hooks/useProjects'
 import type { AssetType } from '../../api/assets'
 
 interface Tab1AssetsProps {
   projectId: number
   episodeId: number | null
-  onGoToTab0?: () => void  // 跳转到 Tab 0 的回调
+  onGoToTab0?: () => void
 }
 
 export default function Tab1Assets({ projectId, episodeId, onGoToTab0 }: Tab1AssetsProps) {
@@ -25,9 +26,12 @@ export default function Tab1Assets({ projectId, episodeId, onGoToTab0 }: Tab1Ass
     extractAssets,
   } = useAssets(projectId)
 
+  const { episodes } = useEpisodes(projectId)
+
   const [viewMode, setViewMode] = useState<'all' | 'episode'>('all')
   const [showAddModal, setShowAddModal] = useState(false)
   const [showExtractModal, setShowExtractModal] = useState(false)
+  const [batchExtracting, setBatchExtracting] = useState(false)
   const [addForm, setAddForm] = useState({
     asset_type: 'character' as AssetType,
     asset_id: '',
@@ -49,6 +53,36 @@ export default function Tab1Assets({ projectId, episodeId, onGoToTab0 }: Tab1Ass
       alert(`提取完成：${result.results[0]?.characters_count} 角色，${result.results[0]?.scenes_count} 场景，${result.results[0]?.props_count} 道具`)
     } catch (e) {
       alert(e instanceof Error ? e.message : '提取失败')
+    }
+  }
+
+  const handleBatchExtract = async () => {
+    if (episodes.length === 0) {
+      alert('当前项目暂无集数')
+      return
+    }
+    if (!confirm(`将对全部 ${episodes.length} 集依次提取资产并合并，可能需要较长时间，确定开始？`)) return
+
+    setBatchExtracting(true)
+    try {
+      const episodeIds = episodes.map((e) => e.id)
+      const result = await extractAssets({
+        episode_ids: episodeIds,
+        merge_mode: true,
+      })
+      const total = result.results.reduce(
+        (acc, r) => ({
+          chars: acc.chars + r.characters_count,
+          scenes: acc.scenes + r.scenes_count,
+          props: acc.props + r.props_count,
+        }),
+        { chars: 0, scenes: 0, props: 0 }
+      )
+      alert(`批量提取完成：${total.chars} 角色，${total.scenes} 场景，${total.props} 道具`)
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '批量提取失败')
+    } finally {
+      setBatchExtracting(false)
     }
   }
 
@@ -74,16 +108,11 @@ export default function Tab1Assets({ projectId, episodeId, onGoToTab0 }: Tab1Ass
   }
 
   if (loading) {
-    return (
-      <div className="p-6 text-center text-gray-500">
-        加载中...
-      </div>
-    )
+    return <div className="p-6 text-center text-gray-500">加载中...</div>
   }
 
   return (
     <div className="flex flex-col h-full">
-      {/* 工具栏 */}
       <AssetToolbar
         viewMode={viewMode}
         onViewModeChange={setViewMode}
@@ -92,24 +121,22 @@ export default function Tab1Assets({ projectId, episodeId, onGoToTab0 }: Tab1Ass
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         onExtractClick={() => setShowExtractModal(true)}
+        onBatchExtractClick={handleBatchExtract}
         onAddClick={() => setShowAddModal(true)}
         extracting={extracting}
+        batchExtracting={batchExtracting}
       />
 
-      {/* 错误提示 */}
       {error && (
-        <div className="px-4 py-2 bg-red-900/50 text-red-300 text-sm">
-          {error}
-        </div>
+        <div className="px-4 py-2 bg-red-900/50 text-red-300 text-sm">{error}</div>
       )}
 
-      {/* 资产网格 */}
       <div className="flex-1 overflow-auto">
-        {assets.length === 0 && !extracting ? (
+        {assets.length === 0 && !extracting && !batchExtracting ? (
           <div className="flex flex-col items-center justify-center h-full gap-3 text-center">
             <div className="text-gray-400">暂无资产数据</div>
             <div className="text-sm text-gray-500">
-              点击上方「提取资产」从已导入的剧本中自动提取角色、场景、道具
+              点击「全集批量提取」自动提取所有集的角色、场景、道具
             </div>
             {onGoToTab0 && (
               <button
@@ -119,12 +146,6 @@ export default function Tab1Assets({ projectId, episodeId, onGoToTab0 }: Tab1Ass
                 还没导入剧本？前往「剧本管理」
               </button>
             )}
-            <button
-              onClick={() => setShowExtractModal(true)}
-              className="text-sm text-gray-400 hover:text-gray-300"
-            >
-              或点击「提取资产」手动提取
-            </button>
           </div>
         ) : (
           <AssetGrid
@@ -142,7 +163,6 @@ export default function Tab1Assets({ projectId, episodeId, onGoToTab0 }: Tab1Ass
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
           <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-md mx-4">
             <h2 className="text-lg font-semibold mb-4">新增资产</h2>
-
             <div className="space-y-4">
               <div>
                 <label className="text-sm text-gray-400 mb-1 block">资产类型</label>
@@ -199,7 +219,6 @@ export default function Tab1Assets({ projectId, episodeId, onGoToTab0 }: Tab1Ass
                 </div>
               )}
             </div>
-
             <div className="flex gap-3 mt-6">
               <button
                 onClick={() => setShowAddModal(false)}
@@ -223,18 +242,12 @@ export default function Tab1Assets({ projectId, episodeId, onGoToTab0 }: Tab1Ass
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
           <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-md mx-4">
             <h2 className="text-lg font-semibold mb-4">AI 提取资产</h2>
-
             <p className="text-sm text-gray-400 mb-4">
-              从当前选中的集数（EP{episodeId ? '...' : '未选择'}）剧本中提取角色、场景、道具。
-              提取结果将自动合并到资产库。
+              从当前选中集数的剧本中提取角色、场景、道具，结果合并到资产库。
             </p>
-
             {!episodeId && (
-              <p className="text-sm text-red-400 mb-4">
-                请先在顶部选择要提取的集数
-              </p>
+              <p className="text-sm text-red-400 mb-4">请先在顶部选择集数</p>
             )}
-
             <div className="flex gap-3">
               <button
                 onClick={() => setShowExtractModal(false)}
@@ -243,10 +256,7 @@ export default function Tab1Assets({ projectId, episodeId, onGoToTab0 }: Tab1Ass
                 取消
               </button>
               <button
-                onClick={() => {
-                  setShowExtractModal(false)
-                  handleExtract()
-                }}
+                onClick={() => { setShowExtractModal(false); handleExtract() }}
                 disabled={!episodeId || extracting}
                 className="flex-1 bg-emerald-600 hover:bg-emerald-500 disabled:bg-gray-700 text-white text-sm px-4 py-2 rounded-lg transition-colors"
               >

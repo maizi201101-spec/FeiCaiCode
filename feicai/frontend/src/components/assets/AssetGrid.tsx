@@ -26,7 +26,7 @@ export default function AssetGrid({ assets, projectId, onUpdate, onDelete, onAdd
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 p-4">
       {assets.map((asset) => (
         <AssetCard
           key={`${asset.asset_type}-${asset.asset_id}`}
@@ -39,7 +39,7 @@ export default function AssetGrid({ assets, projectId, onUpdate, onDelete, onAdd
       {/* 新增资产卡片 */}
       <div
         onClick={onAddClick}
-        className="bg-gray-800/50 border border-gray-700/50 rounded-xl h-[200px] flex items-center justify-center cursor-pointer hover:bg-gray-800 hover:border-gray-600 transition-colors"
+        className="bg-gray-800/50 border border-gray-700/50 rounded-lg h-[112px] flex items-center justify-center cursor-pointer hover:bg-gray-800 hover:border-gray-600 transition-colors"
       >
         <div className="text-center text-gray-500">
           <p className="text-2xl mb-1">+</p>
