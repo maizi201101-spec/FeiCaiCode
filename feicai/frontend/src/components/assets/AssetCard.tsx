@@ -10,6 +10,7 @@ import {
   type AssetImage,
 } from '../../api/assets'
 import { pollTaskStatus } from '../../hooks/useTaskPolling'
+import AssetVariantRow from './AssetVariantRow'
 
 interface AssetCardProps {
   asset: Asset
@@ -32,6 +33,7 @@ export default function AssetCard({ asset, projectId, onUpdate, onDelete }: Asse
   const [editedAppearance, setEditedAppearance] = useState(asset.appearance || '')
   const [editedDescription, setEditedDescription] = useState(asset.description || '')
   const [saving, setSaving] = useState(false)
+  const [variantsExpanded, setVariantsExpanded] = useState(false)
 
   const [images, setImages] = useState<AssetImage[]>([])
   const [currentImageIndex, setCurrentImageIndex] = useState(1)
@@ -40,7 +42,6 @@ export default function AssetCard({ asset, projectId, onUpdate, onDelete }: Asse
   const [uploading, setUploading] = useState(false)
   const [generatingProgress, setGeneratingProgress] = useState('')
 
-  // 鼠标跟随浮动预览
   const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(null)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -145,66 +146,278 @@ export default function AssetCard({ asset, projectId, onUpdate, onDelete }: Asse
     await onDelete(asset.asset_type, asset.asset_id)
   }
 
-  const descText = asset.asset_type === 'character'
-    ? asset.appearance
-    : asset.description
+  const descText = asset.asset_type === 'character' ? asset.appearance : asset.description
 
-  // ── 紧凑卡片：左缩略图 + 右文字 ──────────────────────
   return (
-    <>
+    <div className="flex flex-col">
+      {/* ── 父卡片（横向布局）─────────────────────────────── */}
       <div
-        className={`bg-gray-800 rounded-lg overflow-hidden flex gap-0 cursor-pointer transition-colors ${
+        className={`bg-gray-800 rounded-lg overflow-hidden border group ${
           asset.needs_review
-            ? 'border border-yellow-500/70 hover:border-yellow-400'
-            : 'border border-gray-700 hover:border-gray-500'
+            ? 'border-yellow-500/70'
+            : 'border-gray-700'
         }`}
-        onClick={() => setExpanded(true)}
       >
-        {/* 左：16:9 缩略图，最长边完整显示 */}
-        <div
-          className="relative shrink-0 bg-gray-900 flex items-center justify-center overflow-hidden"
-          style={{ width: 80, height: 56 }}
-          onMouseEnter={(e) => primaryImageUrl && setHoverPos({ x: e.clientX, y: e.clientY })}
-          onMouseMove={(e) => primaryImageUrl && setHoverPos({ x: e.clientX, y: e.clientY })}
-          onMouseLeave={() => setHoverPos(null)}
-          onClick={(e) => e.stopPropagation()} // 悬停区不触发详情弹窗
-        >
-          {loadingImages ? (
-            <span className="text-xs text-gray-600">...</span>
-          ) : primaryImageUrl ? (
-            <img
-              src={primaryImageUrl}
-              alt={asset.name}
-              className="w-full h-full object-contain"
-            />
-          ) : (
-            <span className="text-xs text-gray-600">无图</span>
-          )}
+        <div className="flex gap-0">
+          {/* 左：16:9 缩略图 */}
+          <div
+            className="relative shrink-0 bg-gray-900 flex items-center justify-center overflow-hidden cursor-pointer"
+            style={{ width: 80, height: 56 }}
+            onMouseEnter={(e) => primaryImageUrl && setHoverPos({ x: e.clientX, y: e.clientY })}
+            onMouseMove={(e) => primaryImageUrl && setHoverPos({ x: e.clientX, y: e.clientY })}
+            onMouseLeave={() => setHoverPos(null)}
+          >
+            {loadingImages ? (
+              <span className="text-xs text-gray-600">...</span>
+            ) : primaryImageUrl ? (
+              <img src={primaryImageUrl} alt={asset.name} className="w-full h-full object-contain" />
+            ) : (
+              <span className="text-xs text-gray-600">无图</span>
+            )}
+          </div>
+
+          {/* 右：文字 + 操作 */}
+          <div className="flex-1 min-w-0 px-2 py-1.5">
+            <div className="flex items-center gap-1 mb-0.5">
+              <span className={`text-xs px-1.5 py-0.5 rounded shrink-0 ${TYPE_COLOR[asset.asset_type]}`}>
+                {TYPE_LABEL[asset.asset_type]}
+              </span>
+              <span className="text-xs text-gray-500 truncate">{asset.asset_id}</span>
+              {asset.needs_review && (
+                <span className="text-xs px-1 py-0.5 rounded bg-yellow-900/40 text-yellow-400 border border-yellow-700/40 shrink-0">
+                  待审核
+                </span>
+              )}
+            </div>
+            <p className="text-sm font-medium text-white truncate">{asset.name}</p>
+            {descText && !editing && (
+              <p className="text-xs text-gray-500 line-clamp-1">{descText}</p>
+            )}
+          </div>
+
+          {/* 右侧操作列（hover 显示） */}
+          <div className="shrink-0 flex flex-col justify-center gap-1 pr-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              onClick={() => setExpanded(!expanded)}
+              className="text-xs px-2 py-0.5 bg-gray-700 text-gray-300 rounded hover:bg-gray-600"
+            >
+              {expanded ? '收起' : '展开'}
+            </button>
+            <button
+              onClick={handleDelete}
+              className="text-xs px-2 py-0.5 bg-red-900/40 text-red-400 rounded hover:bg-red-800/60"
+            >
+              删除
+            </button>
+          </div>
         </div>
 
-        {/* 右：文字 */}
-        <div className="flex-1 min-w-0 px-2 py-1.5">
-          <div className="flex items-center gap-1 mb-0.5">
-            <span className={`text-xs px-1.5 py-0.5 rounded shrink-0 ${TYPE_COLOR[asset.asset_type]}`}>
-              {TYPE_LABEL[asset.asset_type]}
-            </span>
-            <span className="text-xs text-gray-500 truncate">{asset.asset_id}</span>
+        {/* 展开区：图片管理 + 内联编辑 */}
+        {expanded && (
+          <div className="border-t border-gray-700 p-3 space-y-3">
+            {/* 图片管理区 */}
+            <div className="flex gap-3 items-start">
+              {/* 图片预览 */}
+              <div
+                className="relative bg-gray-900 rounded flex items-center justify-center overflow-hidden shrink-0"
+                style={{ width: 160, height: 90 }}
+              >
+                {generating ? (
+                  <div className="text-center">
+                    <div className="animate-spin w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full mx-auto mb-1" />
+                    <span className="text-xs text-gray-400">{generatingProgress}</span>
+                  </div>
+                ) : currentImageUrl ? (
+                  <img src={currentImageUrl} alt={asset.name} className="w-full h-full object-contain" />
+                ) : (
+                  <span className="text-xs text-gray-600">暂无设定图</span>
+                )}
+              </div>
+
+              {/* 图片操作 */}
+              <div className="flex-1 space-y-2">
+                {images.length > 1 && (
+                  <select
+                    value={currentImageIndex}
+                    onChange={(e) => setCurrentImageIndex(Number(e.target.value))}
+                    className="w-full bg-gray-700 text-white text-xs px-2 py-1 rounded border border-gray-600"
+                  >
+                    {images.map((img) => (
+                      <option key={img.index} value={img.index}>
+                        v{img.index} {img.is_primary ? '(主图)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <div className="flex flex-wrap gap-1">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={handleUpload}
+                    className="hidden"
+                  />
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading || generating}
+                    className="text-xs px-2 py-1 bg-gray-700 text-gray-300 rounded hover:bg-gray-600 disabled:opacity-50"
+                  >
+                    {uploading ? '上传中...' : '上传'}
+                  </button>
+                  <button
+                    onClick={handleGenerate}
+                    disabled={generating || uploading}
+                    className="text-xs px-2 py-1 bg-emerald-600 text-white rounded hover:bg-emerald-500 disabled:opacity-50"
+                  >
+                    {generating ? '生成中...' : 'AI生图'}
+                  </button>
+                  {images.length > 0 && currentImageIndex !== 1 && (
+                    <button
+                      onClick={handleSetPrimary}
+                      className="text-xs px-2 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-500"
+                    >
+                      设主图
+                    </button>
+                  )}
+                  {images.length > 0 && (
+                    <button
+                      onClick={handleDeleteImage}
+                      className="text-xs px-2 py-1 bg-red-900/50 text-red-300 rounded hover:bg-red-800"
+                    >
+                      删图
+                    </button>
+                  )}
+                </div>
+                {images.length > 0 && (
+                  <span className="text-xs text-gray-600">{images.length} 张图</span>
+                )}
+              </div>
+            </div>
+
+            {/* 内联编辑区 */}
+            {editing ? (
+              <div className="space-y-2">
+                <input
+                  type="text"
+                  value={editedName}
+                  onChange={(e) => setEditedName(e.target.value)}
+                  className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm text-white"
+                  placeholder="名称"
+                />
+                {asset.asset_type === 'character' ? (
+                  <textarea
+                    value={editedAppearance}
+                    onChange={(e) => setEditedAppearance(e.target.value)}
+                    className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm text-white resize-none"
+                    rows={3}
+                    placeholder="外貌描述"
+                  />
+                ) : (
+                  <textarea
+                    value={editedDescription}
+                    onChange={(e) => setEditedDescription(e.target.value)}
+                    className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm text-white resize-none"
+                    rows={3}
+                    placeholder="描述"
+                  />
+                )}
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-700 text-white text-sm rounded"
+                  >
+                    {saving ? '保存中...' : '保存'}
+                  </button>
+                  <button
+                    onClick={() => setEditing(false)}
+                    className="px-3 py-1 bg-gray-700 text-gray-300 text-sm rounded hover:bg-gray-600"
+                  >
+                    取消
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-1 text-sm text-gray-400">
+                {asset.asset_type === 'character' && (
+                  <>
+                    {asset.gender && <p><span className="text-gray-500">性别：</span>{asset.gender}{asset.age && ` · ${asset.age}`}</p>}
+                    {asset.appearance && <p className="line-clamp-3">{asset.appearance}</p>}
+                    {asset.outfit && <p className="text-xs text-gray-500">{asset.outfit}</p>}
+                  </>
+                )}
+                {asset.asset_type === 'scene' && (
+                  <>
+                    {asset.description && <p className="line-clamp-3">{asset.description}</p>}
+                    {asset.time_of_day && <p><span className="text-gray-500">时间：</span>{asset.time_of_day}{asset.lighting && ` · ${asset.lighting}`}</p>}
+                  </>
+                )}
+                {asset.asset_type === 'prop' && asset.description && (
+                  <p className="line-clamp-3">{asset.description}</p>
+                )}
+              </div>
+            )}
+
+            {/* 底部操作行 */}
+            <div className="flex items-center gap-3 pt-1 border-t border-gray-700/50">
+              {!editing && (
+                <button
+                  onClick={() => setEditing(true)}
+                  className="text-xs text-gray-400 hover:text-gray-200"
+                >
+                  编辑描述
+                </button>
+              )}
+              {asset.needs_review && (
+                <button
+                  onClick={() => onUpdate(asset.asset_type, asset.asset_id, { needs_review: false })}
+                  className="text-xs text-yellow-400 hover:text-yellow-300"
+                >
+                  标记已审核
+                </button>
+              )}
+            </div>
           </div>
-          <p className="text-sm font-medium text-white truncate">{asset.name}</p>
-          {descText && (
-            <p className="text-xs text-gray-500 line-clamp-2">{descText}</p>
-          )}
-        </div>
+        )}
       </div>
 
-      {/* 鼠标跟随浮动大图 */}
+      {/* ── Variant 子卡片 ──────────────────────────────── */}
+      {asset.variants.length > 0 && (
+        <div className="mt-0.5">
+          {variantsExpanded ? (
+            <>
+              {asset.variants.map((v) => (
+                <AssetVariantRow
+                  key={v.variant_id}
+                  variant={v}
+                  projectId={projectId}
+                  assetType={asset.asset_type}
+                  assetId={asset.asset_id}
+                />
+              ))}
+              <button
+                onClick={() => setVariantsExpanded(false)}
+                className="ml-4 pl-3 text-xs text-gray-600 hover:text-gray-400 py-0.5"
+              >
+                收起变体
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => setVariantsExpanded(true)}
+              className="ml-4 pl-3 text-xs text-gray-600 hover:text-gray-400 py-0.5 border-l border-gray-700"
+            >
+              展开 {asset.variants.length} 个变体 ▾
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* 鼠标悬浮大图预览 */}
       {hoverPos && primaryImageUrl && (
         <div
           className="fixed z-[9999] pointer-events-none"
-          style={{
-            left: hoverPos.x + 16,
-            top: hoverPos.y - 90,
-          }}
+          style={{ left: hoverPos.x + 16, top: hoverPos.y - 90 }}
         >
           <img
             src={primaryImageUrl}
@@ -214,195 +427,6 @@ export default function AssetCard({ asset, projectId, onUpdate, onDelete }: Asse
           />
         </div>
       )}
-
-      {/* ── 详情弹窗 ────────────────────────────────────── */}
-      {expanded && (
-        <div
-          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50"
-          onClick={() => { if (!editing) setExpanded(false) }}
-        >
-          <div
-            className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-lg mx-4 max-h-[85vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* 图片区 */}
-            <div className="relative bg-gray-950 flex items-center justify-center" style={{ paddingTop: '56.25%' }}>
-              <div className="absolute inset-0 flex items-center justify-center">
-                {generating ? (
-                  <div className="text-center">
-                    <div className="animate-spin w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full mx-auto mb-2" />
-                    <span className="text-xs text-gray-400">{generatingProgress}</span>
-                  </div>
-                ) : currentImageUrl ? (
-                  <img
-                    src={currentImageUrl}
-                    alt={asset.name}
-                    className="w-full h-full object-contain"
-                  />
-                ) : (
-                  <span className="text-sm text-gray-600">暂无设定图</span>
-                )}
-              </div>
-
-              {images.length > 1 && (
-                <div className="absolute bottom-2 right-2">
-                  <select
-                    value={currentImageIndex}
-                    onChange={(e) => setCurrentImageIndex(Number(e.target.value))}
-                    className="bg-gray-700 text-white text-xs px-2 py-1 rounded border border-gray-600"
-                  >
-                    {images.map((img) => (
-                      <option key={img.index} value={img.index}>
-                        v{img.index} {img.is_primary ? '(主图)' : ''}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              <button
-                onClick={() => { setEditing(false); setExpanded(false) }}
-                className="absolute top-2 right-2 text-gray-400 hover:text-white bg-gray-800/80 rounded-full w-6 h-6 flex items-center justify-center text-xs"
-              >
-                ✕
-              </button>
-            </div>
-
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={handleUpload}
-              className="hidden"
-            />
-
-            <div className="p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <span className={`text-xs px-2 py-0.5 rounded ${TYPE_COLOR[asset.asset_type]}`}>
-                  {TYPE_LABEL[asset.asset_type]}
-                </span>
-                <span className="text-xs text-gray-500">{asset.asset_id}</span>
-                {asset.needs_review && (
-                  <span className="text-xs px-1.5 py-0.5 rounded bg-yellow-900/50 text-yellow-400 border border-yellow-700/50">待审核</span>
-                )}
-                {images.length > 0 && (
-                  <span className="text-xs text-gray-600">{images.length} 张图</span>
-                )}
-              </div>
-
-              {editing ? (
-                <div className="space-y-3">
-                  <input
-                    type="text"
-                    value={editedName}
-                    onChange={(e) => setEditedName(e.target.value)}
-                    className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm text-white"
-                    placeholder="名称"
-                  />
-                  {asset.asset_type === 'character' ? (
-                    <textarea
-                      value={editedAppearance}
-                      onChange={(e) => setEditedAppearance(e.target.value)}
-                      className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm text-white resize-none"
-                      rows={4}
-                      placeholder="外貌描述"
-                    />
-                  ) : (
-                    <textarea
-                      value={editedDescription}
-                      onChange={(e) => setEditedDescription(e.target.value)}
-                      className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm text-white resize-none"
-                      rows={4}
-                      placeholder="描述"
-                    />
-                  )}
-                  <div className="flex gap-2">
-                    <button onClick={handleSave} disabled={saving}
-                      className="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-700 text-white text-sm rounded">
-                      {saving ? '保存中...' : '保存'}
-                    </button>
-                    <button onClick={() => setEditing(false)}
-                      className="px-3 py-1 bg-gray-700 text-gray-300 text-sm rounded hover:bg-gray-600">
-                      取消
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <p className="font-medium text-white mb-2">{asset.name}</p>
-
-                  {asset.asset_type === 'character' && (
-                    <div className="space-y-1 text-sm text-gray-400">
-                      {asset.gender && <p><span className="text-gray-500">性别：</span>{asset.gender}{asset.age && ` · ${asset.age}`}</p>}
-                      {asset.appearance && <p>{asset.appearance}</p>}
-                      {asset.outfit && <p>{asset.outfit}</p>}
-                    </div>
-                  )}
-                  {asset.asset_type === 'scene' && (
-                    <div className="space-y-1 text-sm text-gray-400">
-                      {asset.description && <p>{asset.description}</p>}
-                      {asset.time_of_day && <p><span className="text-gray-500">时间：</span>{asset.time_of_day}{asset.lighting && ` · ${asset.lighting}`}</p>}
-                    </div>
-                  )}
-                  {asset.asset_type === 'prop' && (
-                    <div className="text-sm text-gray-400">
-                      {asset.description && <p>{asset.description}</p>}
-                    </div>
-                  )}
-
-                  {asset.variants.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      {asset.variants.map((v) => (
-                        <span key={v.variant_id} className="text-xs px-2 py-0.5 rounded bg-gray-700 text-gray-300">
-                          {v.variant_name}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-
-                  <div className="mt-3 flex items-center gap-2 flex-wrap">
-                    <button onClick={() => fileInputRef.current?.click()} disabled={uploading || generating}
-                      className="text-xs px-2 py-1 bg-gray-700 text-gray-300 rounded hover:bg-gray-600 disabled:opacity-50">
-                      {uploading ? '上传中...' : '上传'}
-                    </button>
-                    <button onClick={handleGenerate} disabled={generating || uploading}
-                      className="text-xs px-2 py-1 bg-emerald-600 text-white rounded hover:bg-emerald-500 disabled:opacity-50">
-                      {generating ? '生成中...' : 'AI生图'}
-                    </button>
-                    {images.length > 0 && (
-                      <>
-                        {currentImageIndex !== 1 && (
-                          <button onClick={handleSetPrimary}
-                            className="text-xs px-2 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-500">
-                            设为主图
-                          </button>
-                        )}
-                        <button onClick={handleDeleteImage}
-                          className="text-xs px-2 py-1 bg-red-900/50 text-red-300 rounded hover:bg-red-800">
-                          删除图
-                        </button>
-                      </>
-                    )}
-                  </div>
-
-                  <div className="mt-3 flex items-center gap-3 border-t border-gray-700 pt-3">
-                    <button onClick={() => setEditing(true)} className="text-xs text-gray-400 hover:text-gray-200">编辑描述</button>
-                    {asset.needs_review && (
-                      <button
-                        onClick={() => onUpdate(asset.asset_type, asset.asset_id, { needs_review: false })}
-                        className="text-xs text-yellow-400 hover:text-yellow-300"
-                      >
-                        标记已审核
-                      </button>
-                    )}
-                    <button onClick={handleDelete} className="text-xs text-red-400 hover:text-red-300">删除资产</button>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-    </>
+    </div>
   )
 }
