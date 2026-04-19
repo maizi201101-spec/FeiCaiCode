@@ -122,13 +122,16 @@ async def detect_split_points(project_id: int, payload: FullScriptUpload):
     if not await get_project_exists(project_id):
         raise HTTPException(404, "项目不存在")
 
+    # 统一换行符为 \n，避免 CRLF 文件落盘时 read_text 自动转换导致位置偏移
+    normalized = payload.content.replace('\r\n', '\n').replace('\r', '\n')
+
     try:
-        result = await detect_splits(payload.content, payload.expected_episodes)
+        result = await detect_splits(normalized, payload.expected_episodes)
     except Exception as e:
         raise HTTPException(500, f"分集检测失败: {str(e)}")
 
-    # 同时保存全集剧本
-    await save_full_script_temp(project_id, payload.content)
+    # 保存 normalize 后的内容，保证落盘时位置一致
+    await save_full_script_temp(project_id, normalized)
 
     return result
 
