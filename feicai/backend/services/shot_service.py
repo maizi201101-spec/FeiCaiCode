@@ -218,7 +218,7 @@ async def plan_shots_by_ai(episode_id: int) -> ShotsCollection:
 
 请严格按照 JSON 格式输出，不要添加任何额外文字。"""
 
-    result = await call_llm(prompt, temperature=0.3, max_tokens=4000)
+    result = await call_llm(prompt, temperature=0.3, max_tokens=8000)
 
     # 解析 JSON
     json_match = re.search(r"\{[\s\S]*\}", result)
