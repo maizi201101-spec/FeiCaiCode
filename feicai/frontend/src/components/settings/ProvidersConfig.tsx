@@ -1,6 +1,7 @@
 /**
  * 提供商配置组件
  * 管理 LLM、图片模型、视频模型三类提供商
+ * 暗色主题版本
  */
 
 import { useState } from 'react'
@@ -16,12 +17,11 @@ import { useProviders } from '../../hooks/useProviders'
 
 interface ProvidersConfigProps {
   projectId: number
+  providerType?: ProviderType // 可选，由父组件指定类型
 }
 
-export default function ProvidersConfig({ projectId }: ProvidersConfigProps) {
+export default function ProvidersConfig({ projectId, providerType }: ProvidersConfigProps) {
   const {
-    // providers,  // TODO: 显示提供商列表
-    // projectDefaults,  // TODO: 显示项目默认提供商
     loading,
     error,
     create,
@@ -32,12 +32,14 @@ export default function ProvidersConfig({ projectId }: ProvidersConfigProps) {
     getDefaultByType,
   } = useProviders(projectId)
 
-  const [selectedType, setSelectedType] = useState<ProviderType>('llm')
+  const [selectedType, setSelectedType] = useState<ProviderType>(
+    providerType || 'llm'
+  )
   const [editingProvider, setEditingProvider] = useState<Provider | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [createForm, setCreateForm] = useState<ProviderCreatePayload>({
     name: '',
-    provider_type: 'llm',
+    provider_type: providerType || 'llm',
     impl_type: 'http_api',
     api_key: '',
     base_url: '',
@@ -62,7 +64,7 @@ export default function ProvidersConfig({ projectId }: ProvidersConfigProps) {
       setShowCreateModal(false)
       setCreateForm({
         name: '',
-        provider_type: selectedType,
+        provider_type: providerType || selectedType,
         impl_type: 'http_api',
         api_key: '',
         base_url: '',
@@ -105,162 +107,175 @@ export default function ProvidersConfig({ projectId }: ProvidersConfigProps) {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow">
+    <div className="max-w-2xl">
       {/* 标题 */}
-      <div className="px-4 py-3 border-b flex items-center justify-between">
-        <div>
-          <h3 className="font-medium text-gray-900">API 提供商配置</h3>
-          <p className="text-xs text-gray-500 mt-1">管理 LLM、图片模型、视频模型提供商</p>
-        </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="px-3 py-1.5 bg-blue-500 text-white text-sm rounded hover:bg-blue-600"
-        >
-          + 新建提供商
-        </button>
+      <div className="mb-6">
+        <h2 className="text-lg font-medium text-gray-200 mb-2">
+          {providerType ? `${PROVIDER_TYPE_LABELS[providerType]}提供商` : 'API 提供商配置'}
+        </h2>
+        <p className="text-sm text-gray-400">
+          {providerType ? `管理${PROVIDER_TYPE_LABELS[providerType]}相关提供商` : '管理 LLM、图片模型、视频模型提供商'}
+        </p>
       </div>
 
-      {/* 类型选择 */}
-      <div className="px-4 py-2 border-b flex gap-2">
-        {(['llm', 'image', 'video'] as ProviderType[]).map(type => (
-          <button
-            key={type}
-            onClick={() => setSelectedType(type)}
-            className={`px-3 py-1.5 text-sm rounded ${
-              selectedType === type
-                ? 'bg-blue-100 text-blue-700 border border-blue-300'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            {PROVIDER_TYPE_LABELS[type]}
-          </button>
-        ))}
-      </div>
+      {/* 类型选择 - 父组件指定类型时隐藏 */}
+      {!providerType && (
+        <div className="bg-gray-900 rounded-lg border border-gray-700 p-4 mb-4">
+          <div className="flex gap-2">
+            {(['llm', 'image', 'video'] as ProviderType[]).map(type => (
+              <button
+                key={type}
+                onClick={() => setSelectedType(type)}
+                className={`px-3 py-2 rounded border text-sm ${
+                  selectedType === type
+                    ? 'bg-indigo-600 border-indigo-500 text-white'
+                    : 'bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700'
+                }`}
+              >
+                {PROVIDER_TYPE_LABELS[type]}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* 提供商列表 */}
-      <div className="p-4 space-y-2">
-        {loading && <div className="text-gray-500 text-sm">加载中...</div>}
-        {error && <div className="text-red-500 text-sm">{error}</div>}
+      <div className="bg-gray-900 rounded-lg border border-gray-700 p-4 mb-4">
+        <div className="space-y-3">
+          {loading && <div className="text-gray-500 text-sm">加载中...</div>}
+          {error && <div className="text-red-500 text-sm">{error}</div>}
 
-        {typeProviders.map(provider => {
-          const isDefault = getDefaultByType(provider.provider_type)?.provider_id === provider.provider_id
-          return (
-            <div
-              key={provider.provider_id}
-              className={`p-3 rounded border ${
-                isDefault ? 'border-blue-300 bg-blue-50' : 'border-gray-200'
-              }`}
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-gray-900">{provider.name}</span>
-                    {provider.is_builtin && (
-                      <span className="px-1.5 py-0.5 bg-gray-100 text-gray-500 text-xs rounded">
-                        内置
+          {typeProviders.map(provider => {
+            const isDefault = getDefaultByType(provider.provider_type)?.provider_id === provider.provider_id
+            return (
+              <div
+                key={provider.provider_id}
+                className={`p-4 rounded-lg border ${
+                  isDefault ? 'border-indigo-500 bg-indigo-900/30' : 'border-gray-700 bg-gray-800'
+                }`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-gray-200">{provider.name}</span>
+                      {provider.is_builtin && (
+                        <span className="px-1.5 py-0.5 bg-gray-700 text-gray-400 text-xs rounded">
+                          内置
+                        </span>
+                      )}
+                      {isDefault && (
+                        <span className="px-1.5 py-0.5 bg-indigo-600 text-indigo-200 text-xs rounded">
+                          默认
+                        </span>
+                      )}
+                      <span className="px-1.5 py-0.5 bg-gray-700 text-gray-400 text-xs rounded">
+                        {IMPLEMENTATION_TYPE_LABELS[provider.impl_type]}
                       </span>
+                    </div>
+                    {provider.provider_type === 'llm' && provider.usage_tags.length > 0 && (
+                      <div className="text-xs text-gray-500 mt-1 flex gap-1">
+                        用途：{provider.usage_tags.map(t => USAGE_TAG_LABELS[t]).join('、')}
+                      </div>
                     )}
-                    {isDefault && (
-                      <span className="px-1.5 py-0.5 bg-blue-100 text-blue-600 text-xs rounded">
-                        默认
-                      </span>
+                    {provider.impl_type === 'http_api' && provider.base_url && (
+                      <div className="text-xs text-gray-500 mt-1">
+                        Base URL: {provider.base_url}
+                      </div>
                     )}
-                    <span className="px-1.5 py-0.5 bg-gray-100 text-gray-500 text-xs rounded">
-                      {IMPLEMENTATION_TYPE_LABELS[provider.impl_type]}
-                    </span>
+                    {provider.impl_type === 'jimeng_cli' && provider.cli_path && (
+                      <div className="text-xs text-gray-500 mt-1">
+                        CLI 路径: {provider.cli_path}
+                      </div>
+                    )}
                   </div>
-                  {provider.provider_type === 'llm' && provider.usage_tags.length > 0 && (
-                    <div className="text-xs text-gray-500 mt-1 flex gap-1">
-                      用途：{provider.usage_tags.map(t => USAGE_TAG_LABELS[t]).join('、')}
-                    </div>
-                  )}
-                  {provider.impl_type === 'http_api' && provider.base_url && (
-                    <div className="text-xs text-gray-500 mt-1">
-                      Base URL: {provider.base_url}
-                    </div>
-                  )}
-                  {provider.impl_type === 'jimeng_cli' && provider.cli_path && (
-                    <div className="text-xs text-gray-500 mt-1">
-                      CLI 路径: {provider.cli_path}
-                    </div>
-                  )}
-                </div>
-                <div className="flex gap-1">
-                  {!isDefault && (
+                  <div className="flex gap-2">
+                    {!isDefault && (
+                      <button
+                        onClick={() => handleSetDefault(provider)}
+                        className="px-3 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-500"
+                      >
+                        设为默认
+                      </button>
+                    )}
                     <button
-                      onClick={() => handleSetDefault(provider)}
-                      className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
+                      onClick={() => setEditingProvider(provider)}
+                      className="px-3 py-1 text-xs bg-gray-700 text-gray-300 rounded hover:bg-gray-600"
                     >
-                      设为默认
+                      编辑
                     </button>
-                  )}
-                  <button
-                    onClick={() => setEditingProvider(provider)}
-                    className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded hover:bg-gray-200"
-                  >
-                    编辑
-                  </button>
-                  {!provider.is_builtin && (
-                    <button
-                      onClick={() => handleDelete(provider)}
-                      className="px-2 py-1 text-xs bg-red-100 text-red-600 rounded hover:bg-red-200"
-                    >
-                      删除
-                    </button>
-                  )}
+                    {!provider.is_builtin && (
+                      <button
+                        onClick={() => handleDelete(provider)}
+                        className="px-3 py-1 text-xs bg-red-900 text-red-300 rounded hover:bg-red-800"
+                      >
+                        删除
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          )
-        })}
+            )
+          })}
 
-        {typeProviders.length === 0 && !loading && (
-          <div className="text-gray-400 text-sm text-center py-4">
-            此类型暂无提供商
-          </div>
-        )}
+          {typeProviders.length === 0 && !loading && (
+            <div className="text-gray-500 text-sm text-center py-8">
+              此类型暂无提供商，点击下方按钮新建
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* 新建按钮 */}
+      <button
+        onClick={() => setShowCreateModal(true)}
+        className="px-4 py-2 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-500"
+      >
+        + 新建提供商
+      </button>
 
       {/* 创建弹窗 */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg p-4 w-[500px] max-w-full">
-            <h4 className="font-medium text-gray-900 mb-3">新建提供商</h4>
-            <div className="space-y-3">
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="bg-gray-900 rounded-lg border border-gray-700 p-6 w-[500px] max-w-full">
+            <h4 className="font-medium text-gray-200 mb-4">新建提供商</h4>
+            <div className="space-y-4">
+              {/* 类型选择 - 父组件指定类型时隐藏 */}
+              {!providerType && (
+                <div>
+                  <label className="text-sm text-gray-400 block mb-1">类型</label>
+                  <select
+                    value={createForm.provider_type}
+                    onChange={e => setCreateForm(prev => ({
+                      ...prev,
+                      provider_type: e.target.value as ProviderType,
+                    }))}
+                    className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-indigo-500"
+                  >
+                    {(['llm', 'image', 'video'] as ProviderType[]).map(type => (
+                      <option key={type} value={type}>{PROVIDER_TYPE_LABELS[type]}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div>
-                <label className="text-sm text-gray-600 block mb-1">类型</label>
-                <select
-                  value={createForm.provider_type}
-                  onChange={e => setCreateForm(prev => ({
-                    ...prev,
-                    provider_type: e.target.value as ProviderType,
-                  }))}
-                  className="w-full px-3 py-2 border rounded"
-                >
-                  {(['llm', 'image', 'video'] as ProviderType[]).map(type => (
-                    <option key={type} value={type}>{PROVIDER_TYPE_LABELS[type]}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="text-sm text-gray-600 block mb-1">名称 *</label>
+                <label className="text-sm text-gray-400 block mb-1">名称 *</label>
                 <input
                   type="text"
                   value={createForm.name}
                   onChange={e => setCreateForm(prev => ({ ...prev, name: e.target.value }))}
-                  className="w-full px-3 py-2 border rounded"
+                  className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-indigo-500"
                   placeholder="提供商名称"
                 />
               </div>
               <div>
-                <label className="text-sm text-gray-600 block mb-1">实现类型</label>
+                <label className="text-sm text-gray-400 block mb-1">实现类型</label>
                 <select
                   value={createForm.impl_type || 'http_api'}
                   onChange={e => setCreateForm(prev => ({
                     ...prev,
                     impl_type: e.target.value as 'http_api' | 'jimeng_cli',
                   }))}
-                  className="w-full px-3 py-2 border rounded"
+                  className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-indigo-500"
                 >
                   <option value="http_api">HTTP API</option>
                   <option value="jimeng_cli">即梦 CLI</option>
@@ -269,32 +284,32 @@ export default function ProvidersConfig({ projectId }: ProvidersConfigProps) {
               {createForm.impl_type === 'http_api' && (
                 <>
                   <div>
-                    <label className="text-sm text-gray-600 block mb-1">API Key</label>
+                    <label className="text-sm text-gray-400 block mb-1">API Key</label>
                     <input
                       type="password"
                       value={createForm.api_key || ''}
                       onChange={e => setCreateForm(prev => ({ ...prev, api_key: e.target.value }))}
-                      className="w-full px-3 py-2 border rounded"
+                      className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-indigo-500"
                       placeholder="API Key"
                     />
                   </div>
                   <div>
-                    <label className="text-sm text-gray-600 block mb-1">Base URL</label>
+                    <label className="text-sm text-gray-400 block mb-1">Base URL</label>
                     <input
                       type="text"
                       value={createForm.base_url || ''}
                       onChange={e => setCreateForm(prev => ({ ...prev, base_url: e.target.value }))}
-                      className="w-full px-3 py-2 border rounded"
+                      className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-indigo-500"
                       placeholder="https://api.example.com/v1"
                     />
                   </div>
                   <div>
-                    <label className="text-sm text-gray-600 block mb-1">模型名称</label>
+                    <label className="text-sm text-gray-400 block mb-1">模型名称</label>
                     <input
                       type="text"
                       value={createForm.model_name || ''}
                       onChange={e => setCreateForm(prev => ({ ...prev, model_name: e.target.value }))}
-                      className="w-full px-3 py-2 border rounded"
+                      className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-indigo-500"
                       placeholder="gpt-4"
                     />
                   </div>
@@ -302,28 +317,28 @@ export default function ProvidersConfig({ projectId }: ProvidersConfigProps) {
               )}
               {createForm.impl_type === 'jimeng_cli' && (
                 <div>
-                  <label className="text-sm text-gray-600 block mb-1">CLI 路径</label>
+                  <label className="text-sm text-gray-400 block mb-1">CLI 路径</label>
                   <input
                     type="text"
                     value={createForm.cli_path || ''}
                     onChange={e => setCreateForm(prev => ({ ...prev, cli_path: e.target.value }))}
-                    className="w-full px-3 py-2 border rounded"
+                    className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-indigo-500"
                     placeholder="/path/to/jimeng-cli"
                   />
                 </div>
               )}
             </div>
-            <div className="mt-4 flex justify-end gap-2">
+            <div className="mt-6 flex justify-end gap-3">
               <button
                 onClick={() => setShowCreateModal(false)}
-                className="px-3 py-1.5 bg-gray-100 text-gray-600 rounded hover:bg-gray-200"
+                className="px-4 py-2 bg-gray-800 text-gray-300 rounded hover:bg-gray-700"
               >
                 取消
               </button>
               <button
                 onClick={handleCreate}
                 disabled={!createForm.name}
-                className="px-3 py-1.5 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
+                className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-500 disabled:opacity-50"
               >
                 创建
               </button>
@@ -334,72 +349,72 @@ export default function ProvidersConfig({ projectId }: ProvidersConfigProps) {
 
       {/* 编辑弹窗 */}
       {editingProvider && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg p-4 w-[500px] max-w-full">
-            <h4 className="font-medium text-gray-900 mb-3">编辑提供商</h4>
-            <div className="space-y-3">
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="bg-gray-900 rounded-lg border border-gray-700 p-6 w-[500px] max-w-full">
+            <h4 className="font-medium text-gray-200 mb-4">编辑提供商</h4>
+            <div className="space-y-4">
               <div>
-                <label className="text-sm text-gray-600 block mb-1">名称</label>
+                <label className="text-sm text-gray-400 block mb-1">名称</label>
                 <input
                   type="text"
                   value={editingProvider.name}
                   onChange={e => setEditingProvider(prev => prev ? { ...prev, name: e.target.value } : null)}
-                  className="w-full px-3 py-2 border rounded"
+                  className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-indigo-500"
                 />
               </div>
               {editingProvider.impl_type === 'http_api' && (
                 <>
                   <div>
-                    <label className="text-sm text-gray-600 block mb-1">API Key</label>
+                    <label className="text-sm text-gray-400 block mb-1">API Key</label>
                     <input
                       type="password"
                       value={editingProvider.api_key || ''}
                       onChange={e => setEditingProvider(prev => prev ? { ...prev, api_key: e.target.value } : null)}
-                      className="w-full px-3 py-2 border rounded"
+                      className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-indigo-500"
                     />
                   </div>
                   <div>
-                    <label className="text-sm text-gray-600 block mb-1">Base URL</label>
+                    <label className="text-sm text-gray-400 block mb-1">Base URL</label>
                     <input
                       type="text"
                       value={editingProvider.base_url || ''}
                       onChange={e => setEditingProvider(prev => prev ? { ...prev, base_url: e.target.value } : null)}
-                      className="w-full px-3 py-2 border rounded"
+                      className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-indigo-500"
                     />
                   </div>
                   <div>
-                    <label className="text-sm text-gray-600 block mb-1">模型名称</label>
+                    <label className="text-sm text-gray-400 block mb-1">模型名称</label>
                     <input
                       type="text"
                       value={editingProvider.model_name || ''}
                       onChange={e => setEditingProvider(prev => prev ? { ...prev, model_name: e.target.value } : null)}
-                      className="w-full px-3 py-2 border rounded"
+                      className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-indigo-500"
                     />
                   </div>
                 </>
               )}
               {editingProvider.impl_type === 'jimeng_cli' && (
                 <div>
-                  <label className="text-sm text-gray-600 block mb-1">CLI 路径</label>
+                  <label className="text-sm text-gray-400 block mb-1">CLI 路径</label>
                   <input
                     type="text"
                     value={editingProvider.cli_path || ''}
                     onChange={e => setEditingProvider(prev => prev ? { ...prev, cli_path: e.target.value } : null)}
-                    className="w-full px-3 py-2 border rounded"
+                    className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-indigo-500"
                   />
                 </div>
               )}
             </div>
-            <div className="mt-4 flex justify-end gap-2">
+            <div className="mt-6 flex justify-end gap-3">
               <button
                 onClick={() => setEditingProvider(null)}
-                className="px-3 py-1.5 bg-gray-100 text-gray-600 rounded hover:bg-gray-200"
+                className="px-4 py-2 bg-gray-800 text-gray-300 rounded hover:bg-gray-700"
               >
                 取消
               </button>
               <button
                 onClick={handleEdit}
-                className="px-3 py-1.5 bg-blue-500 text-white rounded hover:bg-blue-600"
+                className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-500"
               >
                 保存
               </button>

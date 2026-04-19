@@ -1,6 +1,7 @@
 /**
  * 全局提示词配置区块
  * 第1块全局提示词（追加到所有视频提示词末尾）
+ * 暗色主题版本
  */
 
 import { type GlobalSettings } from '../../api/prompts'
@@ -18,11 +19,18 @@ export default function GlobalPromptConfig({ settings, onChange }: GlobalPromptC
   }
 
   return (
-    <div className="bg-white rounded-lg shadow p-4">
-      <h2 className="text-lg font-medium text-gray-900 mb-4">全局提示词（第1块）</h2>
+    <div className="max-w-2xl">
+      {/* 标题 */}
+      <div className="mb-6">
+        <h2 className="text-lg font-medium text-gray-200 mb-2">全局提示词（第1块）</h2>
+        <p className="text-sm text-gray-400">
+          此提示词将追加到所有视频提示词末尾，作为全局风格设定
+        </p>
+      </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+      {/* 提示词输入 */}
+      <div className="bg-gray-900 rounded-lg border border-gray-700 p-4 mb-4">
+        <label className="text-sm font-medium text-gray-300 block mb-2">
           提示词内容
         </label>
         <textarea
@@ -30,32 +38,29 @@ export default function GlobalPromptConfig({ settings, onChange }: GlobalPromptC
           onChange={(e) => handleChange(e.target.value)}
           placeholder="真实电影质感,8K,禁BGM,禁字幕"
           rows={4}
-          className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500 resize-none"
+          className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-indigo-500 resize-none"
         />
-        <p className="text-xs text-gray-500 mt-1">
-          此提示词将追加到所有视频提示词末尾，作为全局风格设定
-        </p>
       </div>
 
-      {/* 示例 */}
-      <div className="mt-4 p-3 bg-gray-50 rounded">
-        <p className="text-xs font-medium text-gray-700 mb-2">常用示例：</p>
-        <div className="space-y-1">
+      {/* 常用示例 */}
+      <div className="bg-gray-900 rounded-lg border border-gray-700 p-4">
+        <div className="text-sm font-medium text-gray-300 mb-3">常用示例</div>
+        <div className="space-y-2">
           <button
             onClick={() => handleChange('真实电影质感,8K,禁BGM,禁字幕')}
-            className="text-xs text-blue-600 hover:underline"
+            className="w-full text-left px-3 py-2 bg-gray-800 rounded text-xs text-gray-400 hover:bg-gray-700 hover:text-gray-200"
           >
             真实电影质感,8K,禁BGM,禁字幕
           </button>
           <button
             onClick={() => handleChange('动漫赛璐璐风,鲜艳色彩,2D渲染')}
-            className="text-xs text-blue-600 hover:underline"
+            className="w-full text-left px-3 py-2 bg-gray-800 rounded text-xs text-gray-400 hover:bg-gray-700 hover:text-gray-200"
           >
             动漫赛璐璐风,鲜艳色彩,2D渲染
           </button>
           <button
             onClick={() => handleChange('复古胶片风,暖色调,颗粒感')}
-            className="text-xs text-blue-600 hover:underline"
+            className="w-full text-left px-3 py-2 bg-gray-800 rounded text-xs text-gray-400 hover:bg-gray-700 hover:text-gray-200"
           >
             复古胶片风,暖色调,颗粒感
           </button>
