@@ -14,10 +14,11 @@ export default function TaskIndicator({ projectId }: TaskIndicatorProps) {
   const fetchActiveTasks = async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/projects/${projectId}/tasks?status=pending,processing`)
+      const res = await fetch(`/api/projects/${projectId}/tasks?limit=20`)
       if (res.ok) {
-        const data: TaskStatus[] = await res.json()
-        setTasks(data)
+        const data = await res.json()
+        const list: TaskStatus[] = data.tasks ?? data
+        setTasks(list)
       }
     } catch (e) {
       console.error('获取任务失败:', e)

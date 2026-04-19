@@ -54,9 +54,10 @@ export async function generatePrompts(episodeId: number): Promise<{ taskId: numb
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.detail || '生成提示词失败')
+    throw new Error((err as { detail?: string }).detail || '生成提示词失败')
   }
-  return res.json()
+  const data = await res.json()
+  return { taskId: data.task_id, status: data.status }
 }
 
 export async function getPrompts(episodeId: number): Promise<PromptsCollection> {
