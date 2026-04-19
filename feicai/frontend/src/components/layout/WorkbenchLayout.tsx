@@ -28,6 +28,9 @@ export default function WorkbenchLayout({
   const projectIdNum = Number(projectId)
   const [currentEpisode, setCurrentEpisode] = useState<EpisodeInfo | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [drawerPinned, setDrawerPinned] = useState(() => {
+    try { return localStorage.getItem('episode-drawer-pinned') === 'true' } catch { return false }
+  })
   const { episodes } = useEpisodes(projectIdNum)
   const [projectName, setProjectName] = useState<string>('')
 
@@ -44,9 +47,15 @@ export default function WorkbenchLayout({
     }
   }
 
+  const handlePinChange = (pinned: boolean) => {
+    setDrawerPinned(pinned)
+    try { localStorage.setItem('episode-drawer-pinned', String(pinned)) } catch {}
+    if (pinned) setDrawerOpen(true)
+  }
+
   const handleSelectEpisode = (ep: EpisodeInfo) => {
     setCurrentEpisode(ep)
-    setDrawerOpen(false)
+    if (!drawerPinned) setDrawerOpen(false)
   }
 
   return (
@@ -104,19 +113,22 @@ export default function WorkbenchLayout({
         </div>
       </header>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden transition-all duration-200">
         {/* 左侧集数抽屉 */}
-        {drawerOpen && (
+        {(drawerOpen || drawerPinned) && (
           <EpisodeDrawer
+            projectId={projectIdNum}
             episodes={episodes}
             currentEpisodeId={currentEpisode?.id ?? null}
+            pinned={drawerPinned}
+            onPin={handlePinChange}
             onSelect={handleSelectEpisode}
             onClose={() => setDrawerOpen(false)}
           />
         )}
 
         {/* 主工作区 */}
-        <main className="flex-1 overflow-auto">{children(currentEpisode)}</main>
+        <main className="flex-1 overflow-auto min-w-0">{children(currentEpisode)}</main>
       </div>
     </div>
   )
