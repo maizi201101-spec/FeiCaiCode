@@ -8,6 +8,7 @@ from schemas.project import (
     ProjectCreate, ProjectUpdate, ProjectResponse,
     EpisodeCreate, EpisodeUpdate, EpisodeResponse,
 )
+from services.project_service import init_project_dirs
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -22,6 +23,13 @@ def _now() -> str:
 async def create_project(project: ProjectCreate, db=Depends(get_db)):
     async with db as conn:
         now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+
+        # 先创建项目目录结构
+        try:
+            init_project_dirs(project.path)
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"无法创建项目目录: {str(e)}")
+
         try:
             cursor = await conn.execute(
                 "INSERT INTO projects (name, path, created_at, updated_at) VALUES (?, ?, ?, ?)",
