@@ -61,16 +61,20 @@ const LLM_PRESETS = [
 interface LLMConfigProps {
   settings: GlobalSettings | null
   onChange: (settings: GlobalSettings) => void
+  projectId: number
 }
 
-export default function LLMConfig({ settings, onChange }: LLMConfigProps) {
+export default function LLMConfig({ settings, onChange, projectId }: LLMConfigProps) {
   const [selectedPreset, setSelectedPreset] = useState<string>('custom')
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [testing, setTesting] = useState(false)
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null)
 
   if (!settings) return null
 
   const handleChange = (field: keyof GlobalSettings, value: string) => {
     onChange({ ...settings, [field]: value })
+    setTestResult(null) // 配置变化时清除测试结果
   }
 
   // 选择预设提供商
@@ -83,6 +87,40 @@ export default function LLMConfig({ settings, onChange }: LLMConfigProps) {
         llm_base_url: preset.base_url,
         llm_model: preset.model,
       })
+      setTestResult(null)
+    }
+  }
+
+  // 测试连接
+  const handleTestConnection = async () => {
+    if (!settings.llm_api_key) {
+      setTestResult({ success: false, message: '请先输入 API Key' })
+      return
+    }
+
+    setTesting(true)
+    setTestResult(null)
+
+    try {
+      const response = await fetch(`/api/projects/${projectId}/settings/test-llm`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
+
+      const data = await response.json()
+
+      if (response.ok && data.success) {
+        setTestResult({ success: true, message: data.message })
+      } else {
+        setTestResult({
+          success: false,
+          message: data.detail || '连接失败，请检查 API Key 和 Base URL'
+        })
+      }
+    } catch (e) {
+      setTestResult({ success: false, message: '请求失败，请检查网络连接' })
+    } finally {
+      setTesting(false)
     }
   }
 
@@ -208,17 +246,31 @@ export default function LLMConfig({ settings, onChange }: LLMConfigProps) {
       {/* 测试连接 */}
       <div className="flex items-center gap-4">
         <button
-          onClick={() => {
-            // TODO: 实现测试连接功能
-            alert('功能开发中：测试 LLM 连接')
-          }}
-          className="px-4 py-2 bg-gray-800 border border-gray-600 rounded text-sm text-gray-300 hover:bg-gray-700"
+          onClick={handleTestConnection}
+          disabled={testing || !settings.llm_api_key}
+          className={`px-4 py-2 rounded text-sm ${
+            testing || !settings.llm_api_key
+              ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
+              : 'bg-indigo-600 text-white hover:bg-indigo-500'
+          }`}
         >
-          测试连接
+          {testing ? '测试中...' : '测试连接'}
         </button>
-        <span className="text-xs text-gray-500">
-          点击测试验证 API Key 是否正确
-        </span>
+
+        {/* 测试结果 */}
+        {testResult && (
+          <span className={`text-sm ${
+            testResult.success ? 'text-green-400' : 'text-red-400'
+          }`}>
+            {testResult.success ? '✓' : '✗'} {testResult.message}
+          </span>
+        )}
+
+        {!testResult && (
+          <span className="text-xs text-gray-500">
+            点击测试验证 API Key 是否正确
+          </span>
+        )}
       </div>
     </div>
   )

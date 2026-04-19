@@ -125,7 +125,7 @@ export default function SettingsPage() {
         {/* 右侧内容区 */}
         <main className="flex-1 p-6 overflow-y-auto">
           {activeCategory === 'llm' && (
-            <LLMConfig settings={localSettings} onChange={setLocalSettings} />
+            <LLMConfig settings={localSettings} onChange={setLocalSettings} projectId={projectId} />
           )}
           {activeCategory === 'image' && (
             <ProvidersConfig projectId={projectId} providerType="image" />

@@ -289,7 +289,13 @@ def build_final_video_prompt(
 
 
 async def get_global_settings(project_id: int) -> GlobalSettings:
-    """从 settings 表读取全局设置（使用项目前缀的 key）"""
+    """从 settings 表读取全局设置
+
+    优先读取项目级设置，LLM 配置如果项目级不存在则从全局读取
+    """
+    settings = GlobalSettings()
+
+    # 1. 先读取项目级设置
     async with aiosqlite.connect(DB_PATH) as db:
         cursor = await db.execute(
             "SELECT key, value FROM settings WHERE key LIKE ?",
@@ -297,12 +303,10 @@ async def get_global_settings(project_id: int) -> GlobalSettings:
         )
         rows = await cursor.fetchall()
 
-    settings = GlobalSettings()
     prefix = f"project_{project_id}_"
     for key, value in rows:
-        # 解析 key: project_{id}_{setting_name}，setting_name 可能包含下划线
         if key.startswith(prefix):
-            setting_name = key[len(prefix):]  # 取前缀后的完整部分
+            setting_name = key[len(prefix):]
             if setting_name == "global_prompt":
                 settings.global_prompt = value
             elif setting_name == "default_model":
@@ -326,27 +330,68 @@ async def get_global_settings(project_id: int) -> GlobalSettings:
             elif setting_name == "default_image_size":
                 settings.default_image_size = value
 
+    # 2. 如果项目级 LLM 配置不存在，从全局读取
+    if not settings.llm_api_key or not settings.llm_base_url or not settings.llm_model:
+        async with aiosqlite.connect(DB_PATH) as db:
+            cursor = await db.execute(
+                "SELECT key, value FROM settings WHERE key IN ('llm_api_key', 'llm_base_url', 'llm_model')"
+            )
+            global_rows = await cursor.fetchall()
+
+        for key, value in global_rows:
+            if key == "llm_api_key" and not settings.llm_api_key:
+                settings.llm_api_key = value
+            elif key == "llm_base_url" and not settings.llm_base_url:
+                settings.llm_base_url = value
+            elif key == "llm_model" and not settings.llm_model:
+                settings.llm_model = value
+
     return settings
 
 
 async def update_global_settings(project_id: int, settings: GlobalSettings) -> None:
-    """更新全局设置（使用项目前缀的 key）"""
+    """更新全局设置
+
+    项目级设置：使用 project_{id}_ 前缀
+    全局级设置（LLM 配置）：不带前缀，所有项目共享
+    """
     now = datetime.now().isoformat()
 
+    # LLM 配置使用全局 key（不带项目前缀）
+    # 因为 LLM API Key 应该是全局的，一次配置所有项目都能用
+    global_settings = [
+        ("llm_api_key", settings.llm_api_key),
+        ("llm_base_url", settings.llm_base_url),
+        ("llm_model", settings.llm_model),
+    ]
+
+    # 项目级设置（使用项目前缀）
+    project_settings = [
+        ("global_prompt", settings.global_prompt),
+        ("default_model", settings.default_model),
+        ("default_duration", str(settings.default_duration)),
+        ("default_resolution", settings.default_resolution),
+        ("default_ratio", settings.default_ratio),
+        ("jimeng_cli_path", settings.jimeng_cli_path),
+        ("default_image_model", settings.default_image_model),
+        ("default_image_size", settings.default_image_size),
+    ]
+
     async with aiosqlite.connect(DB_PATH) as db:
-        for setting_name, value in [
-            ("global_prompt", settings.global_prompt),
-            ("default_model", settings.default_model),
-            ("default_duration", str(settings.default_duration)),
-            ("default_resolution", settings.default_resolution),
-            ("default_ratio", settings.default_ratio),
-            ("llm_api_key", settings.llm_api_key),
-            ("llm_base_url", settings.llm_base_url),
-            ("llm_model", settings.llm_model),
-            ("jimeng_cli_path", settings.jimeng_cli_path),
-            ("default_image_model", settings.default_image_model),
-            ("default_image_size", settings.default_image_size),
-        ]:
+        # 先保存全局 LLM 配置（不带项目前缀）
+        for setting_name, value in global_settings:
+            key = setting_name  # 直接使用 setting_name 作为 key
+            await db.execute(
+                """
+                INSERT INTO settings (key, value, updated_at)
+                VALUES (?, ?, ?)
+                ON CONFLICT(key) DO UPDATE SET value = ?, updated_at = ?
+                """,
+                [key, value, now, value, now]
+            )
+
+        # 再保存项目级设置（带项目前缀）
+        for setting_name, value in project_settings:
             key = f"project_{project_id}_{setting_name}"
             await db.execute(
                 """
@@ -356,4 +401,17 @@ async def update_global_settings(project_id: int, settings: GlobalSettings) -> N
                 """,
                 [key, value, now, value, now]
             )
+
+        # 同时也保存 LLM 配置的项目级副本（用于前端显示）
+        for setting_name, value in global_settings:
+            key = f"project_{project_id}_{setting_name}"
+            await db.execute(
+                """
+                INSERT INTO settings (key, value, updated_at)
+                VALUES (?, ?, ?)
+                ON CONFLICT(key) DO UPDATE SET value = ?, updated_at = ?
+                """,
+                [key, value, now, value, now]
+            )
+
         await db.commit()
