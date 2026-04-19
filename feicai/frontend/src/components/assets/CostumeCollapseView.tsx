@@ -12,7 +12,7 @@ interface CostumeCollapseViewProps {
     scenes: Array<{ name: string; episodes: string[] }>
     props: Array<{ name: string; episodes: string[] }>
   }
-  onConfirm: () => void
+  onConfirm: (selectedKeys: string[]) => void
   onCancel: () => void
 }
 
@@ -127,7 +127,7 @@ export default function CostumeCollapseView({
             取消
           </button>
           <button
-            onClick={onConfirm}
+          onClick={onConfirm.bind(null, Array.from(selectedItems))}
             disabled={selectedItems.size === 0}
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >

@@ -36,7 +36,7 @@ export default function GroupColumn({
       {/* 选定版本按钮 */}
       {group.status !== 'approved' && selectableVersions.length > 0 && (
         <select
-          className="text-xs border rounded px-1 py-0.5 w-full"
+          className="text-xs border border-gray-700 rounded px-1 py-0.5 w-full bg-gray-800 text-gray-200"
           onChange={(e) => {
             const versionId = Number(e.target.value)
             if (versionId) onSelectVersion(group.group_id, versionId)
@@ -54,7 +54,7 @@ export default function GroupColumn({
 
       {/* 已选定的版本显示 */}
       {group.selected_version_id && (
-        <span className="text-xs text-green-600">
+        <span className="text-xs text-green-400">
           ✓ 已选定 V{group.videos.find(v => v.id === group.selected_version_id)?.version_number}
         </span>
       )}
@@ -82,7 +82,7 @@ export default function GroupColumn({
       {group.status === 'revision' && (
         <button
           onClick={() => onGoToTab3(group.group_id)}
-          className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 w-full"
+          className="text-xs px-2 py-0.5 bg-blue-900/50 text-blue-400 rounded hover:bg-blue-800/60 w-full"
         >
           去修改 → Tab3
         </button>

@@ -87,7 +87,7 @@ export default function GroupMatrix({
             {groups.map(g => (
               <td key={g.group_id} className="border-b border-gray-800 px-2 py-2 text-center text-sm">
                 {g.selected_version_id ? (
-                  <span className="text-green-600 font-medium">
+                  <span className="text-green-400 font-medium">
                     V{g.videos.find(v => v.id === g.selected_version_id)?.version_number}
                   </span>
                 ) : (

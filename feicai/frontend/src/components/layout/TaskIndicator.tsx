@@ -40,9 +40,9 @@ export default function TaskIndicator({ projectId }: TaskIndicatorProps) {
       {/* 指示器按钮 */}
       <button
         onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-1 px-2 py-1 rounded hover:bg-gray-100"
+        className="flex items-center gap-1 px-2 py-1 rounded hover:bg-gray-800"
       >
-        <span className="text-sm text-gray-600">任务</span>
+        <span className="text-sm text-gray-400">任务</span>
         {activeCount > 0 && (
           <span className="bg-red-500 text-white text-xs px-1.5 rounded-full">
             {activeCount}
@@ -52,18 +52,18 @@ export default function TaskIndicator({ projectId }: TaskIndicatorProps) {
 
       {/* 任务列表浮层 */}
       {expanded && (
-        <div className="absolute right-0 top-full mt-1 w-64 bg-white border rounded shadow-lg z-50">
-          <div className="p-2 border-b font-medium text-sm">进行中任务 ({activeCount})</div>
+        <div className="absolute right-0 top-full mt-1 w-64 bg-gray-900 border border-gray-700 rounded shadow-lg z-50">
+          <div className="p-2 border-b border-gray-700 font-medium text-sm text-gray-300">进行中任务 ({activeCount})</div>
           <div className="max-h-64 overflow-auto">
             {tasks.length === 0 ? (
               <div className="p-4 text-sm text-gray-400 text-center">无进行中任务</div>
             ) : (
               tasks.map((task) => (
-                <div key={task.id} className="p-2 border-b last:border-b-0">
+                <div key={task.id} className="p-2 border-b border-gray-800 last:border-b-0">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">{task.type}</span>
+                    <span className="text-sm font-medium text-gray-200">{task.type}</span>
                     <span className={`text-xs px-1 rounded ${
-                      task.status === 'processing' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'
+                      task.status === 'processing' ? 'bg-blue-900/50 text-blue-400' : 'bg-yellow-900/50 text-yellow-400'
                     }`}>
                       {task.status === 'processing' ? '执行中' : '等待中'}
                     </span>
@@ -78,11 +78,11 @@ export default function TaskIndicator({ projectId }: TaskIndicatorProps) {
               ))
             )}
           </div>
-          <div className="p-2 border-t">
+          <div className="p-2 border-t border-gray-700">
             <button
               onClick={() => fetchActiveTasks()}
               disabled={loading}
-              className="w-full text-xs text-gray-600 hover:text-gray-800 disabled:opacity-50"
+              className="w-full text-xs text-gray-400 hover:text-gray-200 disabled:opacity-50"
             >
               {loading ? '刷新中...' : '刷新'}
             </button>

@@ -119,7 +119,7 @@ export default function Tab2Storyboard({ projectId, episodeId }: Tab2StoryboardP
         <button
           onClick={handlePlanShots}
           disabled={generating}
-          className="px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300"
+          className="px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-700"
         >
           {generating ? '规划中...' : 'AI 规划分镜'}
         </button>

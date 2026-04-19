@@ -353,10 +353,13 @@ export async function collapsePreview(episodeId: number): Promise<CollapsePrevie
 }
 
 export async function extractFromStoryboard(
-  episodeId: number
+  episodeId: number,
+  selectedKeys?: string[]
 ): Promise<ExtractFromStoryboardResult> {
   const res = await fetch(`${BASE}/episodes/${episodeId}/assets/extract-from-storyboard`, {
     method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ selected_costume_keys: selectedKeys ?? null }),
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))

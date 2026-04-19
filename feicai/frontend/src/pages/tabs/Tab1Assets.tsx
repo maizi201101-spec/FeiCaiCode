@@ -115,10 +115,10 @@ export default function Tab1Assets({ projectId, episodeId, onGoToTab0 }: Tab1Ass
     }
   }
 
-  const handleCollapseConfirm = async () => {
+  const handleCollapseConfirm = async (selectedKeys: string[]) => {
     if (!episodeId) return
     try {
-      await extractFromStoryboard(episodeId)
+      await extractFromStoryboard(episodeId, selectedKeys)
     } catch (e) {
       alert(e instanceof Error ? e.message : '资产写入失败')
     }
