@@ -87,6 +87,19 @@ export async function getAssets(
   return res.json()
 }
 
+export async function getEpisodeAssets(
+  projectId: number,
+  episodeId: number,
+  assetType?: AssetType
+): Promise<Asset[]> {
+  const url = assetType
+    ? `${BASE}/projects/${projectId}/episodes/${episodeId}/assets?asset_type=${assetType}`
+    : `${BASE}/projects/${projectId}/episodes/${episodeId}/assets`
+  const res = await fetch(url)
+  if (!res.ok) throw new Error('获取分集资产失败')
+  return res.json()
+}
+
 export async function getAssetDetail(
   projectId: number,
   assetType: AssetType,

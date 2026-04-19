@@ -1,5 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from typing import List, Optional
+from pathlib import Path
+import json
 
 from schemas.assets_schema import (
     AssetsCollection, AssetCreate, AssetUpdate, AssetResponse,
@@ -9,7 +11,7 @@ from services.asset_service import (
     read_assets, write_assets, add_asset, update_asset, delete_asset,
     extract_assets_from_episode, merge_assets,
 )
-from services.script_service import get_project_path
+from services.script_service import get_project_path, get_episode_info
 
 router = APIRouter(tags=["assets"])
 
@@ -159,3 +161,44 @@ async def extract_assets(project_id: int, payload: ExtractRequest):
             await write_assets(project_id, merged)
 
     return {"results": [r.model_dump(exclude={'characters', 'scenes', 'props'}) for r in results]}
+
+
+@router.get("/projects/{project_id}/episodes/{episode_id}/assets")
+async def list_episode_assets(project_id: int, episode_id: int, asset_type: Optional[AssetType] = None):
+    """获取单集资产列表（基于 episode_assets.json 索引过滤全局资产库）"""
+    episode = await get_episode_info(episode_id)
+    if not episode:
+        raise HTTPException(404, "集数不存在")
+
+    project_path = await get_project_path(project_id)
+    if not project_path:
+        raise HTTPException(404, "项目不存在")
+
+    ep_assets_file = Path(project_path) / "episodes" / f"EP{episode['number']:02d}" / "episode_assets.json"
+    if not ep_assets_file.exists():
+        return []  # 尚未提取
+
+    index = json.loads(ep_assets_file.read_text(encoding="utf-8"))
+    char_ids = set(index.get("characters", []))
+    scene_ids = set(index.get("scenes", []))
+    prop_ids = set(index.get("props", []))
+
+    all_assets = await read_assets(project_id)
+    result = []
+
+    if asset_type is None or asset_type == AssetType.character:
+        for c in all_assets.characters:
+            if c.asset_id in char_ids:
+                result.append(asset_to_response(AssetType.character, c.model_dump()))
+
+    if asset_type is None or asset_type == AssetType.scene:
+        for s in all_assets.scenes:
+            if s.asset_id in scene_ids:
+                result.append(asset_to_response(AssetType.scene, s.model_dump()))
+
+    if asset_type is None or asset_type == AssetType.prop:
+        for p in all_assets.props:
+            if p.asset_id in prop_ids:
+                result.append(asset_to_response(AssetType.prop, p.model_dump()))
+
+    return result

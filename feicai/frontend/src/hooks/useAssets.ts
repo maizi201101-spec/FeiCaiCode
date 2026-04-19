@@ -6,13 +6,18 @@ import {
   type AssetUpdatePayload,
   type ExtractPayload,
   getAssets,
+  getEpisodeAssets,
   createAsset,
   updateAsset,
   deleteAsset,
   extractAssets,
 } from '../api/assets'
 
-export function useAssets(projectId: number | null) {
+export function useAssets(
+  projectId: number | null,
+  episodeId?: number | null,
+  viewMode?: 'all' | 'episode'
+) {
   const [assets, setAssets] = useState<Asset[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -25,14 +30,19 @@ export function useAssets(projectId: number | null) {
     setLoading(true)
     setError(null)
     try {
-      const data = await getAssets(projectId, filterType ?? undefined)
+      let data: Asset[]
+      if (viewMode === 'episode' && episodeId) {
+        data = await getEpisodeAssets(projectId, episodeId, filterType ?? undefined)
+      } else {
+        data = await getAssets(projectId, filterType ?? undefined)
+      }
       setAssets(data)
     } catch (e) {
       setError(e instanceof Error ? e.message : '获取资产失败')
     } finally {
       setLoading(false)
     }
-  }, [projectId, filterType])
+  }, [projectId, episodeId, viewMode, filterType])
 
   useEffect(() => {
     fetchAssets()

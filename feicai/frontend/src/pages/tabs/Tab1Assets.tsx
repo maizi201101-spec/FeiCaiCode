@@ -12,6 +12,8 @@ interface Tab1AssetsProps {
 }
 
 export default function Tab1Assets({ projectId, episodeId, onGoToTab0 }: Tab1AssetsProps) {
+  const [viewMode, setViewMode] = useState<'all' | 'episode'>('all')
+
   const {
     assets,
     loading,
@@ -24,11 +26,8 @@ export default function Tab1Assets({ projectId, episodeId, onGoToTab0 }: Tab1Ass
     editAsset,
     deleteAsset,
     extractAssets,
-  } = useAssets(projectId)
-
+  } = useAssets(projectId, episodeId, viewMode)
   const { episodes } = useEpisodes(projectId)
-
-  const [viewMode, setViewMode] = useState<'all' | 'episode'>('all')
   const [showAddModal, setShowAddModal] = useState(false)
   const [showExtractModal, setShowExtractModal] = useState(false)
   const [batchExtracting, setBatchExtracting] = useState(false)

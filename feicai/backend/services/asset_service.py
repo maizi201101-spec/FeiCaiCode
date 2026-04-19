@@ -181,6 +181,17 @@ async def extract_assets_from_episode(
     scenes = [Scene(**_sanitize(s)) for s in data.get("scenes", []) if isinstance(s, dict)]
     props = [Prop(**_sanitize(p)) for p in data.get("props", []) if isinstance(p, dict)]
 
+    # 保存分集资产索引（记录本集出现的 asset_id，供分集视图查询）
+    episode_assets = {
+        "episode_id": episode_id,
+        "episode_number": episode["number"],
+        "characters": [c.asset_id for c in characters],
+        "scenes": [s.asset_id for s in scenes],
+        "props": [p.asset_id for p in props],
+    }
+    ep_assets_file = script_file.parent / "episode_assets.json"
+    ep_assets_file.write_text(json.dumps(episode_assets, ensure_ascii=False, indent=2), encoding="utf-8")
+
     return ExtractProgress(
         episode_id=episode_id,
         episode_number=episode["number"],
