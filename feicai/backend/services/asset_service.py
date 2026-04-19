@@ -380,6 +380,7 @@ def merge_assets(
                 outfit=merge_descriptions(existing_char.outfit, new_char.outfit),
                 base_asset=existing_char.base_asset,
                 tags=list(set(existing_char.tags + new_char.tags)),
+                needs_review=existing_char.needs_review or new_char.needs_review,
                 variants=existing_char.variants + new_char.variants,
                 images=existing_char.images,
             )
@@ -399,6 +400,8 @@ def merge_assets(
                 visual_elements=list(set(existing_scene.visual_elements + new_scene.visual_elements)),
                 time_of_day=new_scene.time_of_day or existing_scene.time_of_day,
                 lighting=new_scene.lighting or existing_scene.lighting,
+                tags=list(set(existing_scene.tags + new_scene.tags)),
+                needs_review=existing_scene.needs_review or new_scene.needs_review,
                 variants=existing_scene.variants + new_scene.variants,
                 images=existing_scene.images,
             )
@@ -415,6 +418,8 @@ def merge_assets(
                 asset_id=existing_prop.asset_id,
                 name=existing_prop.name,
                 description=merge_descriptions(existing_prop.description, new_prop.description),
+                tags=list(set(existing_prop.tags + new_prop.tags)),
+                needs_review=existing_prop.needs_review or new_prop.needs_review,
                 variants=existing_prop.variants + new_prop.variants,
                 images=existing_prop.images,
             )
