@@ -27,52 +27,83 @@ def detect_explicit_markers(content: str) -> List[Tuple[int, int, str]]:
     """第一层：显式标记检测
 
     检测 EP01、第1集、Episode 1、第一集 等显式标记
+    优先检测标题行的标记（行首或有括号包围）
     返回分割点位置列表: [(起始位置, 结束位置, 匹配文本)]
     """
-    patterns = [
-        # 中文格式
-        r'第\s*[一二三四五六七八九十百零]+\s*集',  # 第一集、第二集
-        r'第\s*\d+\s*集',                         # 第1集、第2集
-        r'集\s*[一二三四五六七八九十]+\s*[：:\n]',  # 一：、集二：
-        r'集\s*\d+\s*[：:\n]',                     # 集1：、集2：
-        r'[一二三四五六七八九十]+\s*集',           # 一集、二集（无"第"）
+    # 优先级高的格式（更精确，置信度更高）
+    primary_patterns = [
+        # 括号包围格式（最精确）
+        r'\【第\s*[一二三四五六七八九十百零]+\s*集\】',  # 【第一集】
+        r'\【第\s*\d+\s*集\】',                           # 【第1集】
+        r'\（第\s*[一二三四五六七八九十百零]+\s*集\）',  # （第一集）
+        r'\（第\s*\d+\s*集\）',                           # （第1集）
+        r'\[第\s*[一二三四五六七八九十百零]+\s*集\]',    # [第一集]
+        r'\[第\s*\d+\s*集\]',                             # [第1集]
+        # 行首格式（标题行）
+        r'^第\s*[一二三四五六七八九十百零]+\s*集\s*[：:\n]',  # 第一集： 或 第一集\n
+        r'^第\s*\d+\s*集\s*[：:\n]',                         # 第1集： 或 第1集\n
+        r'^EP\s*\d+\s*[：:\n]',                              # EP01： 或 EP01\n
+        r'^Episode\s*\d+\s*[：:\n]',                          # Episode 1：
+        r'^EPISODE\s*\d+\s*[：:\n]',                          # EPISODE 1：
+    ]
+
+    # 次级格式（需要验证）
+    secondary_patterns = [
+        # 中文格式（非行首时可能是内容中的文字）
+        r'第\s*[一二三四五六七八九十百零]+\s*集',
+        r'第\s*\d+\s*集',
         # 英文格式
-        r'EP\s*\d+',                               # EP01、EP02
-        r'Episode\s*\d+',                          # Episode 1
-        r'EPISODE\s*\d+',                          # EPISODE 1
+        r'EP\s*\d+',
+        r'Episode\s*\d+',
+        r'EPISODE\s*\d+',
         # 纯数字格式（需要验证上下文）
         r'^\s*\d+\s*[\.．]\s+',                    # 1.、2.（行开头）
         r'^\s*\d{2}\s*\n',                         # 01、02（单独一行）
-        # 其他常见格式
-        r'本集\s*完',                              # 本集完（结束标记）
-        r'下集\s*预告',                            # 下集预告（结束标记）
+        # 结束标记
+        r'本集\s*完',
+        r'下集\s*预告',
     ]
 
     matches = []
-    for pattern in patterns:
+
+    # 先检测高优先级格式
+    for pattern in primary_patterns:
         for m in re.finditer(pattern, content, re.IGNORECASE | re.MULTILINE):
             matches.append((m.start(), m.end(), m.group()))
 
+    # 如果高优先级格式找到了足够多的标记，直接使用
+    # 否则使用次级格式补充
+    if len(matches) < 2:
+        for pattern in secondary_patterns:
+            for m in re.finditer(pattern, content, re.IGNORECASE | re.MULTILINE):
+                matches.append((m.start(), m.end(), m.group()))
+
     # 去重：重叠位置的多个匹配，只保留最长的
     if matches:
-        # 按起始位置排序
-        matches.sort(key=lambda x: (x[0], -x[1]))  # 起始位置升序，长度降序
+        # 按起始位置排序，长度降序
+        matches.sort(key=lambda x: (x[0], -x[1]))
 
         unique_matches = []
         for match in matches:
             start, end, marker = match
-            # 检查是否被已有匹配包含或重叠
+            # 检查是否与已有匹配重叠
             is_duplicate = False
             for existing in unique_matches:
                 ex_start, ex_end, ex_marker = existing
-                # 如果当前匹配被已有匹配包含，跳过
+                # 如果当前匹配与已有匹配重叠，保留更长的
                 if start >= ex_start and end <= ex_end:
+                    # 当前匹配被已有匹配包含，跳过
                     is_duplicate = True
                     break
-                # 如果当前匹配包含已有匹配，替换已有匹配
-                if start <= ex_start and end >= ex_end:
+                elif start <= ex_start and end >= ex_end:
+                    # 当前匹配包含已有匹配，替换
                     unique_matches.remove(existing)
                     break
+                elif start < ex_end and end > ex_start:
+                    # 部分重叠，保留位置靠前且更长的
+                    if start < ex_start or (start == ex_start and end > ex_end):
+                        unique_matches.remove(existing)
+                        break
 
             if not is_duplicate:
                 unique_matches.append(match)
