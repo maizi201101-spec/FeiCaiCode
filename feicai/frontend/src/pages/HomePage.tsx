@@ -1,32 +1,36 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useProjects } from '../hooks/useProjects'
-import { getSystemSettings } from '../api/systemSettings'
+import { getSystemSettings, updateSystemSettings, type SystemSettings } from '../api/systemSettings'
 
 export default function HomePage() {
   const navigate = useNavigate()
   const { projects, loading, createProject } = useProjects()
   const [showModal, setShowModal] = useState(false)
+  const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [formName, setFormName] = useState('')
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [projectsRoot, setProjectsRoot] = useState<string>('')
-  const [noRootWarning, setNoRootWarning] = useState(false)
+  const [systemSettings, setSystemSettings] = useState<SystemSettings | null>(null)
+  const [savingSettings, setSavingSettings] = useState(false)
 
-  // 加载项目区路径
+  // 加载系统设置
   useEffect(() => {
-    getSystemSettings().then(settings => {
-      setProjectsRoot(settings.projects_root_path || '')
-      setNoRootWarning(!settings.projects_root_path)
-    }).catch(() => {})
+    getSystemSettings().then(setSystemSettings).catch(() => {})
   }, [])
 
   async function handleCreate() {
     if (!formName.trim()) return
+
+    // 检查是否配置了项目区路径
+    if (!systemSettings?.projects_root_path) {
+      setError('请先点击右上角「设置」配置项目区路径')
+      return
+    }
+
     setCreating(true)
     setError(null)
     try {
-      // 使用项目名作为路径（如果不是绝对路径，后端会在项目区下创建）
       const project = await createProject({ name: formName.trim(), path: formName.trim() })
       setShowModal(false)
       setFormName('')
@@ -35,6 +39,19 @@ export default function HomePage() {
       setError(e instanceof Error ? e.message : '创建项目失败')
     } finally {
       setCreating(false)
+    }
+  }
+
+  async function handleSaveSettings() {
+    if (!systemSettings) return
+    setSavingSettings(true)
+    try {
+      await updateSystemSettings(systemSettings)
+      setShowSettingsModal(false)
+    } catch (e) {
+      alert('保存失败: ' + (e instanceof Error ? e.message : '未知错误'))
+    } finally {
+      setSavingSettings(false)
     }
   }
 
@@ -48,18 +65,28 @@ export default function HomePage() {
       {/* 顶部导航 */}
       <header className="border-b border-gray-800 px-6 py-4 flex items-center justify-between">
         <h1 className="text-xl font-semibold tracking-tight">飞彩</h1>
-        <button
-          onClick={() => setShowModal(true)}
-          className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-4 py-2 rounded-lg transition-colors"
-        >
-          + 新建项目
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowSettingsModal(true)}
+            className="text-sm text-gray-400 hover:text-gray-200 px-3 py-1.5 rounded border border-gray-700 hover:border-gray-600"
+          >
+            ⚙ 设置
+          </button>
+          <button
+            onClick={() => setShowModal(true)}
+            className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-4 py-2 rounded-lg transition-colors"
+          >
+            + 新建项目
+          </button>
+        </div>
       </header>
 
-      {/* 项目区提示 */}
-      {noRootWarning && (
-        <div className="px-6 py-3 bg-yellow-900/20 border-b border-yellow-900/30 text-yellow-400 text-sm">
-          ⚠ 未配置项目区路径，请先在「设置」页面配置，否则新建项目需要输入完整路径
+      {/* 未配置项目区提示 */}
+      {systemSettings && !systemSettings.projects_root_path && (
+        <div className="px-6 py-3 bg-yellow-900/20 border-b border-yellow-900/30">
+          <span className="text-yellow-400 text-sm">
+            ⚠ 请先点击右上角「设置」配置项目区路径
+          </span>
         </div>
       )}
 
@@ -108,14 +135,13 @@ export default function HomePage() {
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:border-indigo-500"
                   autoFocus
                 />
-                {projectsRoot && (
+                {systemSettings?.projects_root_path && (
                   <p className="text-xs text-gray-500 mt-1">
-                    项目将保存到: {projectsRoot}/{formName || '项目名'}
+                    保存到: {systemSettings.projects_root_path}/{formName || '项目名'}
                   </p>
                 )}
               </div>
 
-              {/* 错误提示 */}
               {error && (
                 <div className="text-sm text-red-400 bg-red-900/20 rounded px-3 py-2">
                   {error}
@@ -136,6 +162,47 @@ export default function HomePage() {
                 className="flex-1 bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm px-4 py-2 rounded-lg transition-colors"
               >
                 {creating ? '创建中...' : '创建项目'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 系统设置弹窗 */}
+      {showSettingsModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+          <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-md mx-4">
+            <h2 className="text-lg font-semibold mb-4">系统设置</h2>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm text-gray-400 mb-1 block">项目区路径</label>
+                <input
+                  type="text"
+                  value={systemSettings?.projects_root_path || ''}
+                  onChange={(e) => setSystemSettings(prev => prev ? { ...prev, projects_root_path: e.target.value } : null)}
+                  placeholder="例：/Users/jm02/TongBu/项目区"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:border-indigo-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  新建项目的文件夹会在此目录下自动创建
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowSettingsModal(false)}
+                className="flex-1 border border-gray-700 text-gray-300 text-sm px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleSaveSettings}
+                disabled={savingSettings}
+                className="flex-1 bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm px-4 py-2 rounded-lg transition-colors"
+              >
+                {savingSettings ? '保存中...' : '保存'}
               </button>
             </div>
           </div>
