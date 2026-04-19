@@ -263,8 +263,8 @@ def calculate_split_points(
         pass  # 不作为第一集，第一集从第一个标记开始
 
     for i, (start, end, marker, layer) in enumerate(layer_results):
-        # 从标记结束位置（内容开始）到下一个标记起始位置（或文件结尾）
-        content_start = end  # 该集内容起始位置
+        # 从标记起始位置（含标记行）到下一个标记起始位置（或文件结尾）
+        content_start = start  # 该集内容起始位置（包含标记行）
 
         # 查找下一个标记位置，作为该集内容结束位置
         if i + 1 < len(layer_results):
