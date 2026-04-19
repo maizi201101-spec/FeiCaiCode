@@ -33,7 +33,7 @@ class Character(BaseModel):
 
 
 class Scene(BaseModel):
-    """场景资产"""
+    """场景资产（v1.7：无 variant，显著变化创建新场景）"""
     asset_id: str
     name: str
     description: Optional[str] = None
@@ -42,18 +42,18 @@ class Scene(BaseModel):
     lighting: Optional[str] = None
     tags: List[str] = []
     needs_review: bool = False
-    variants: List[Variant] = []
+    variants: List[Variant] = []  # 保留字段向后兼容，但 v1.7 不使用
     images: List[str] = []
 
 
 class Prop(BaseModel):
-    """道具资产"""
+    """道具资产（v1.7：无 variant，所有状态在一张图中）"""
     asset_id: str
     name: str
     description: Optional[str] = None
     tags: List[str] = []
     needs_review: bool = False
-    variants: List[Variant] = []
+    variants: List[Variant] = []  # 保留字段向后兼容，但 v1.7 不使用
     images: List[str] = []
 
 

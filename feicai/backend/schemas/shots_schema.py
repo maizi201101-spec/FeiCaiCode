@@ -54,6 +54,28 @@ class SpeechLine(BaseModel):
     text: str
 
 
+class CharacterRef(BaseModel):
+    """角色引用（asset_refs 中的角色）"""
+    name: str  # 角色名称
+    costume: str  # 整体形象词（如「书生装」「囚服」）
+
+
+class AssetRefs(BaseModel):
+    """镜头资产引用（分镜 LLM 写入）"""
+    characters: List[CharacterRef] = []  # 角色列表（含装扮）
+    scenes: List[str] = []  # 场景名称列表（字符串数组，无 state）
+    props: List[str] = []  # 道具名称列表
+    shot_annotations: str = ""  # 镜头级一次性外观变化（用 [] 括号格式）
+
+
+class AssetBinding(BaseModel):
+    """资产绑定（资产绑定步骤写入）"""
+    asset_id: str  # 资产 ID
+    variant_id: Optional[str] = None  # variant ID（null 表示 base）
+    confidence: float = 1.0  # 绑定置信度
+    needs_review: bool = False  # 是否需要人工审核
+
+
 class TimeRange(BaseModel):
     """时间范围"""
     start_sec: float
@@ -70,7 +92,9 @@ class Shot(BaseModel):
     shot_type: ShotType
     shot_size: ShotSize
     camera_move: CameraMove
-    assets: List[str] = []  # 资产ID列表
+    assets: List[str] = []  # 资产ID列表（旧字段，保留向后兼容）
+    asset_refs: Optional[AssetRefs] = None  # 资产引用（分镜 LLM 写入）
+    asset_bindings: List[AssetBinding] = []  # 资产绑定（资产绑定步骤写入）
     frame_action: str  # 画面描述
     lighting: Optional[str] = None
     screen_text: Optional[str] = None
@@ -103,6 +127,7 @@ class ShotUpdate(BaseModel):
     screen_text: Optional[str] = None
     speech: Optional[List[SpeechLine]] = None
     assets: Optional[List[str]] = None
+    asset_refs: Optional[AssetRefs] = None  # 支持更新 asset_refs
     time_of_day: Optional[str] = None
 
 

@@ -135,7 +135,7 @@ async def generate_storyboard_md(episode_id: int, shots: ShotsCollection) -> str
 
 
 async def plan_shots_by_ai(episode_id: int) -> ShotsCollection:
-    """调用 LLM 分析剧本 + 资产库，生成分镜"""
+    """调用 LLM 分析剧本，生成分镜（含 asset_refs）并积累装扮注册表"""
     episode = await get_episode_info(episode_id)
     if not episode:
         raise ValueError(f"集数 {episode_id} 不存在")
@@ -151,26 +151,18 @@ async def plan_shots_by_ai(episode_id: int) -> ShotsCollection:
 
     script_content = script_file.read_text(encoding="utf-8")
 
-    # 读取资产库
-    assets = await read_assets(episode["project_id"])
-
-    # 构建资产摘要
-    assets_summary = []
-    for char in assets.characters:
-        assets_summary.append(f"角色: {char.name} ({char.asset_id})")
-    for scene in assets.scenes:
-        assets_summary.append(f"场景: {scene.name} ({scene.asset_id})")
-    for prop in assets.props:
-        assets_summary.append(f"道具: {prop.name} ({prop.asset_id})")
+    # 加载装扮注册表
+    from services.costume_registry_service import CostumeRegistryService
+    registry = CostumeRegistryService.load_registry(project_path)
+    costume_context = CostumeRegistryService.to_llm_context(registry)
 
     # LLM Prompt（使用字符串拼接避免 f-string 嵌套问题）
-    prompt = """你是一个专业的影视分镜规划师。请分析以下剧本内容，结合已确认的资产库，生成结构化的分镜数据。
+    prompt = """你是一个专业的影视分镜规划师。请分析以下剧本内容，生成结构化的分镜数据。
 
 ## 剧本内容
 """ + script_content[:6000] + """
 
-## 资产库
-""" + ("\n".join(assets_summary) if assets_summary else "无资产") + """
+""" + (costume_context if costume_context else "") + """
 
 ## 分镜规划规则
 1. 以「镜头组」为顶层结构，每组为一个视频生成单元
@@ -179,19 +171,31 @@ async def plan_shots_by_ai(episode_id: int) -> ShotsCollection:
 4. 场景切换、动作链完成后应断组
 5. 单镜头超过15秒不强制拆分，单独输出
 
+## 资产引用规则
+每个镜头必须输出 asset_refs 字段，包含：
+- characters: [{name: "角色名", costume: "装扮词"}] — 使用装扮注册表中的装扮词，不创造新称呼
+- scenes: ["场景名"] — 字符串数组，场景显著变化时使用不同场景名（如「书房」和「焚毁的书房」）
+- props: ["道具名"] — 字符串数组
+- shot_annotations: "" — 镜头级一次性外观变化（用 [] 括号格式，如「[张三脸上有血迹]」）
+
 ## 输出格式（JSON）
 {
   "shots": [
     {
       "shot_id": "01",
       "group_id": "G01",
-      "scene_id": "场景资产ID",
+      "scene_id": "",
       "time_range": {"start_sec": 0, "end_sec": 5.2},
       "duration": 5.2,
       "shot_type": "对话",
       "shot_size": "中景",
       "camera_move": "固定",
-      "assets": ["角色ID", "场景ID"],
+      "asset_refs": {
+        "characters": [{"name": "张三", "costume": "书生装"}],
+        "scenes": ["书房"],
+        "props": ["毛笔"],
+        "shot_annotations": ""
+      },
       "frame_action": "画面描述",
       "lighting": "光影描述",
       "speech": [{"type": "dialogue", "speaker": "角色名", "text": "台词"}]
@@ -230,6 +234,18 @@ async def plan_shots_by_ai(episode_id: int) -> ShotsCollection:
     shots = []
     for s in data.get("shots", []):
         try:
+            # 解析 asset_refs
+            asset_refs = None
+            if "asset_refs" in s:
+                from schemas.shots_schema import AssetRefs, CharacterRef
+                asset_refs_data = s["asset_refs"]
+                asset_refs = AssetRefs(
+                    characters=[CharacterRef(**c) for c in asset_refs_data.get("characters", [])],
+                    scenes=asset_refs_data.get("scenes", []),
+                    props=asset_refs_data.get("props", []),
+                    shot_annotations=asset_refs_data.get("shot_annotations", "")
+                )
+
             shot = Shot(
                 shot_id=s["shot_id"],
                 group_id=s["group_id"],
@@ -240,6 +256,7 @@ async def plan_shots_by_ai(episode_id: int) -> ShotsCollection:
                 shot_size=ShotSize(s["shot_size"]),
                 camera_move=CameraMove(s["camera_move"]),
                 assets=s.get("assets", []),
+                asset_refs=asset_refs,
                 frame_action=s["frame_action"],
                 lighting=s.get("lighting"),
                 screen_text=s.get("screen_text"),
@@ -269,6 +286,14 @@ async def plan_shots_by_ai(episode_id: int) -> ShotsCollection:
 
     # 写入文件
     await write_shots(episode_id, collection)
+
+    # 积累装扮注册表
+    asset_refs_list = [shot.asset_refs.model_dump() if shot.asset_refs else None for shot in shots]
+    asset_refs_list = [ref for ref in asset_refs_list if ref]  # 过滤 None
+    if asset_refs_list:
+        episode_number = episode['number']
+        episode_id_str = f"EP{episode_number:02d}"
+        CostumeRegistryService.upsert_from_asset_refs(project_path, episode_id_str, asset_refs_list)
 
     # 生成 storyboard.md
     await generate_storyboard_md(episode_id, collection)

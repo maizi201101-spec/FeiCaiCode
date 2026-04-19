@@ -31,6 +31,25 @@ export interface TimeRange {
   end_sec: number
 }
 
+export interface CharacterRef {
+  name: string
+  costume: string
+}
+
+export interface AssetRefs {
+  characters: CharacterRef[]
+  scenes: string[]
+  props: string[]
+  shot_annotations: string
+}
+
+export interface AssetBinding {
+  asset_id: string
+  variant_id?: string | null
+  confidence: number
+  needs_review: boolean
+}
+
 export interface Shot {
   shot_id: string
   group_id: string
@@ -41,6 +60,8 @@ export interface Shot {
   shot_size: ShotSize
   camera_move: CameraMove
   assets: string[]
+  asset_refs?: AssetRefs | null
+  asset_bindings: AssetBinding[]
   frame_action: string
   lighting?: string
   screen_text?: string
@@ -70,6 +91,7 @@ export interface ShotUpdatePayload {
   screen_text?: string
   speech?: SpeechLine[]
   assets?: string[]
+  asset_refs?: AssetRefs | null
   time_of_day?: string
 }
 
