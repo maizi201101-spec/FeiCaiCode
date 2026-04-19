@@ -51,18 +51,26 @@ async def write_assets(project_id: int, assets: AssetsCollection) -> None:
 
 def _filter_assets_by_script(script: str, existing: AssetsCollection) -> AssetsCollection:
     """Step 1（程序预过滤）：从全量资产库筛出本集剧本中可能出现的资产子集。
-    判断依据：名称直接出现在剧本中，或与剧本中出现的词语相似度 > 0.6。
+    判断依据：
+      - 名称直接出现 → 精确命中
+      - 2字以内短名称：任一字符出现在剧本即纳入候选（应对"团团"→"团"这类缩称）
+      - 3字以上长名称：先试 bigram，再兜底字符集覆盖率 ≥ 60%（应对别名/简称）
     解决后几十集资产库膨胀后 token 过大的问题。
     """
     def appears_in_script(name: str) -> bool:
         if name in script:
             return True
-        # 对2字以上的名称做简单片段匹配
-        if len(name) >= 2:
-            for i in range(len(name) - 1):
-                if name[i:i+2] in script:
-                    return True
-        return False
+        if len(name) <= 2:
+            # 短名称：任一字符出现即纳入候选，防止漏掉缩称
+            return any(c in script for c in name)
+        # 3字以上：先 bigram 匹配
+        for i in range(len(name) - 1):
+            if name[i:i+2] in script:
+                return True
+        # 兜底：字符集覆盖率 ≥ 60%（应对别名/简称，如"小虎"→"虎子"）
+        name_chars = set(name)
+        overlap = len(name_chars & set(script)) / len(name_chars)
+        return overlap >= 0.6
 
     return AssetsCollection(
         characters=[c for c in existing.characters if appears_in_script(c.name)],
@@ -71,13 +79,43 @@ def _filter_assets_by_script(script: str, existing: AssetsCollection) -> AssetsC
     )
 
 
+def _detect_variant_hints(script: str, asset_name: str) -> bool:
+    """检测剧本中是否有换装/变身等触发关键词出现在资产名称附近（50字窗口）。
+    用于 Step 3 后处理：LLM 未识别为 new_variant 时，程序强制标 needs_review。
+    """
+    VARIANT_KEYWORDS = ["换", "变成", "穿上", "脱下", "改变", "换装", "变身", "蜕变", "伪装", "化妆", "易容"]
+    for match in re.finditer(re.escape(asset_name), script):
+        start = max(0, match.start() - 50)
+        end = min(len(script), match.end() + 50)
+        window = script[start:end]
+        if any(kw in window for kw in VARIANT_KEYWORDS):
+            return True
+    return False
+
+
+def _description_diverged(existing_desc: Optional[str], new_desc: Optional[str]) -> bool:
+    """判断新描述与现有描述是否发生显著偏离（字符重叠率 < 30%）。
+    用于 Step 3 后处理：描述偏离大时标 needs_review，让人工确认是否是不同资产。
+    """
+    if not existing_desc or not new_desc:
+        return False
+    existing_chars = set(existing_desc)
+    new_chars = set(new_desc)
+    if not existing_chars:
+        return False
+    overlap = len(existing_chars & new_chars) / len(existing_chars)
+    return overlap < 0.3
+
+
 def _build_candidates_context(filtered: AssetsCollection) -> str:
     """将预过滤后的候选资产格式化为 LLM 输入，带 asset_id + name + 简短描述"""
     lines = []
     for c in filtered.characters:
         desc = c.appearance or ""
         desc = desc[:40] if desc else ""
-        lines.append(f"角色 {c.asset_id}: {c.name}" + (f"（{desc}）" if desc else ""))
+        outfit = (c.outfit or "")[:20]
+        detail = "、".join(filter(None, [desc, outfit]))
+        lines.append(f"角色 {c.asset_id}: {c.name}" + (f"（{detail}）" if detail else ""))
     for s in filtered.scenes:
         desc = s.description or ""
         desc = desc[:40] if desc else ""
@@ -298,6 +336,23 @@ async def extract_assets_from_episode(
                 item["asset_id"] = asset_id
 
             used_ids.add(asset_id)
+
+            # 程序后验证（MEDIUM-1）：LLM 未识别为 new_variant 时，程序补充检测
+            if not needs_review and relation in ("match_existing", "supplement"):
+                asset_name = item.get("name", "")
+                # 检测剧本中是否有换装/变身触发词出现在资产名称附近
+                if _detect_variant_hints(script_content, asset_name):
+                    needs_review = True
+                else:
+                    # 检测描述是否与现有资产发生显著偏离
+                    existing_desc = None
+                    for ea in list(existing.characters) + list(existing.scenes) + list(existing.props):
+                        if ea.asset_id == asset_id:
+                            existing_desc = getattr(ea, "appearance", None) or getattr(ea, "description", None)
+                            break
+                    new_desc = item.get("appearance") or item.get("description")
+                    if _description_diverged(existing_desc, new_desc):
+                        needs_review = True
 
             if needs_review:
                 item["needs_review"] = True
