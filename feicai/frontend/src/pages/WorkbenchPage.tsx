@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import WorkbenchLayout from '../components/layout/WorkbenchLayout'
-import ScriptPanel from '../components/tabs/ScriptPanel'
 import Tab0ScriptManagement from '../pages/tabs/Tab0ScriptManagement'
 import Tab1Assets from '../pages/tabs/Tab1Assets'
 import Tab2Storyboard from '../pages/tabs/Tab2Storyboard'
@@ -41,13 +40,6 @@ export default function WorkbenchPage() {
     <WorkbenchLayout activeTab={activeTab} onTabChange={setActiveTab}>
       {(episode: EpisodeInfo | null) => (
         <>
-          {/* 剧本预览区域 */}
-          {episode && (
-            <div className="border-b border-gray-800">
-              <ScriptPanel projectId={projectId} episodeId={episode.id} episodeNumber={episode.number} />
-            </div>
-          )}
-
           {/* Tab 内容 */}
           {activeTab === 0 ? (
             <Tab0ScriptManagement projectId={projectId} onGoToTab1={handleGoToTab1} />

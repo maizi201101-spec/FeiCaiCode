@@ -106,14 +106,17 @@ export default function Tab1Assets({ projectId, episodeId, onGoToTab0 }: Tab1Ass
       {/* 资产网格 */}
       <div className="flex-1 overflow-auto">
         {assets.length === 0 && !extracting ? (
-          <div className="flex flex-col items-center justify-center h-full gap-4">
+          <div className="flex flex-col items-center justify-center h-full gap-3 text-center">
             <div className="text-gray-400">暂无资产数据</div>
+            <div className="text-sm text-gray-500">
+              点击上方「提取资产」从已导入的剧本中自动提取角色、场景、道具
+            </div>
             {onGoToTab0 && (
               <button
                 onClick={onGoToTab0}
-                className="text-sm text-indigo-400 hover:text-indigo-300"
+                className="text-xs text-gray-600 hover:text-gray-400 mt-1"
               >
-                请先在「剧本管理」导入剧本
+                还没导入剧本？前往「剧本管理」
               </button>
             )}
             <button

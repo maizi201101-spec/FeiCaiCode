@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import EpisodeDrawer from './EpisodeDrawer'
 import EpisodeSelector from './EpisodeSelector'
 import TaskIndicator from './TaskIndicator'
 import { useEpisodes } from '../../hooks/useProjects'
+import { getProject } from '../../api/projects'
 
 const TABS = ['剧本管理', '资产库', '分镜规划', '装配与生成', '质检与确认'] as const
 
@@ -28,6 +29,12 @@ export default function WorkbenchLayout({
   const [currentEpisode, setCurrentEpisode] = useState<EpisodeInfo | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const { episodes } = useEpisodes(projectIdNum)
+  const [projectName, setProjectName] = useState<string>('')
+
+  useEffect(() => {
+    if (!projectIdNum) return
+    getProject(projectIdNum).then(p => setProjectName(p.name)).catch(() => {})
+  }, [projectIdNum])
 
   // 从 episodes 列表中找到当前 episode 的 number
   const handleEpisodeIdChange = (episodeId: number) => {
@@ -57,7 +64,7 @@ export default function WorkbenchLayout({
           onClick={() => setDrawerOpen((o) => !o)}
           className="text-sm font-medium hover:text-gray-300 transition-colors"
         >
-          项目 #{projectId}
+          {projectName || `项目 #${projectId}`}
         </button>
         <span className="text-gray-600">|</span>
         {projectIdNum ? (
