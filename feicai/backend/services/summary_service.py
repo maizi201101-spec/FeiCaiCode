@@ -102,13 +102,19 @@ async def save_script(
     """保存剧本到文件
 
     存入 episodes/EP{xx}/script.txt
+    同时清理多余空行（超过2个连续空行压缩为2个）
     返回文件路径
     """
+    import re
+
     ep_dir = Path(project_path) / "episodes" / f"EP{episode_number:02d}"
     ep_dir.mkdir(parents=True, exist_ok=True)
 
+    # 清理多余空行：3个以上连续空行压缩为2个
+    cleaned_content = re.sub(r'\n\s*\n\s*\n+', '\n\n', script_content)
+
     script_file = ep_dir / "script.txt"
-    script_file.write_text(script_content, encoding="utf-8")
+    script_file.write_text(cleaned_content, encoding="utf-8")
 
     return str(script_file)
 

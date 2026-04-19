@@ -51,6 +51,14 @@ export function useScriptManagement(projectId: number) {
 
   // 确认分集
   const handleConfirmSplit = useCallback(async (splits: EpisodeSplitResult[]) => {
+    // DEBUG: 打印即将发送的 splits 数据
+    console.log('[handleConfirmSplit] Sending splits:', splits.slice(0, 3).map(s => ({
+      episode_number: s.episode_number,
+      start: s.start_position,
+      end: s.end_position,
+      char_count: s.char_count,
+    })))
+
     setConfirming(true)
     setError(null)
     try {

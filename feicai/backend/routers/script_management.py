@@ -147,6 +147,15 @@ async def confirm_split(project_id: int, payload: ConfirmSplitRequest):
     if not full_script:
         raise HTTPException(400, "请先上传全集剧本")
 
+    # DEBUG: 打印接收到的 splits 数据
+    print(f"[confirm-split] Received {len(payload.splits)} splits")
+    for i, split in enumerate(payload.splits[:3]):
+        print(f"  EP{split.episode_number}: start={split.start_position}, end={split.end_position}")
+        # 检查边界内容
+        if split.end_position < len(full_script):
+            print(f"    content[end-10:end] = '{full_script[split.end_position-10:split.end_position][:30]}...'")
+            print(f"    content[end:end+10] = '{full_script[split.end_position:split.end_position+10][:30]}...'")
+
     try:
         # 执行分割和梗概生成
         if payload.generate_summaries:
