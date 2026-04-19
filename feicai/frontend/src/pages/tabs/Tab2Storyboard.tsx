@@ -1,18 +1,21 @@
 import { useState } from 'react'
 import { useShots } from '../../hooks/useShots'
 import { type ShotUpdatePayload } from '../../api/shots'
+import { extractFromStoryboard } from '../../api/assets'
 import ShotTable from '../../components/storyboard/ShotTable'
 import GroupView from '../../components/storyboard/GroupView'
 import ShotEditPanel from '../../components/storyboard/ShotEditPanel'
 import ExportPromptsButton from '../../components/common/ExportPromptsButton'
 
 interface Tab2StoryboardProps {
+  projectId: number
   episodeId: number | null
 }
 
-export default function Tab2Storyboard({ episodeId }: Tab2StoryboardProps) {
+export default function Tab2Storyboard({ projectId, episodeId }: Tab2StoryboardProps) {
   const [viewMode, setViewMode] = useState<'table' | 'group'>('table')
   const [editingShotId, setEditingShotId] = useState<string | null>(null)
+  const [extractingAssets, setExtractingAssets] = useState(false)
 
   const {
     shotsCollection,
@@ -61,6 +64,22 @@ export default function Tab2Storyboard({ episodeId }: Tab2StoryboardProps) {
       await changeShotGroup(shotId, groupId)
     } catch (e) {
       alert(e instanceof Error ? e.message : '调整归组失败')
+    }
+  }
+
+  const handleExtractAssets = async () => {
+    if (!episodeId) {
+      alert('请先选择集数')
+      return
+    }
+    setExtractingAssets(true)
+    try {
+      const result = await extractFromStoryboard(episodeId)
+      alert(`资产提取完成：${result.characters_count} 角色，${result.scenes_count} 场景，${result.props_count} 道具`)
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '提取失败')
+    } finally {
+      setExtractingAssets(false)
     }
   }
 
@@ -143,6 +162,13 @@ export default function Tab2Storyboard({ episodeId }: Tab2StoryboardProps) {
           {/* 操作按钮 */}
           <div className="flex gap-2">
             <ExportPromptsButton episodeId={episodeId} />
+            <button
+              onClick={handleExtractAssets}
+              disabled={extractingAssets || generating}
+              className="px-3 py-1 bg-teal-500 text-white rounded disabled:bg-gray-300 text-sm"
+            >
+              {extractingAssets ? '提取中...' : '提取资产'}
+            </button>
             <button
               onClick={refetch}
               className="px-3 py-1 bg-gray-100 rounded"

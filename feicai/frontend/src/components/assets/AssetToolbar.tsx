@@ -9,11 +9,13 @@ interface AssetToolbarProps {
   onSearchChange: (query: string) => void
   onExtractClick: () => void
   onBatchExtractClick: () => void
+  onExtractFromStoryboardClick: () => void
   onAddClick: () => void
   onOpenClusterLog: () => void
   hasClusterLog: boolean
   extracting: boolean
   batchExtracting: boolean
+  extractingFromStoryboard: boolean
 }
 
 export default function AssetToolbar({
@@ -25,11 +27,13 @@ export default function AssetToolbar({
   onSearchChange,
   onExtractClick,
   onBatchExtractClick,
+  onExtractFromStoryboardClick,
   onAddClick,
   onOpenClusterLog,
   hasClusterLog,
   extracting,
   batchExtracting,
+  extractingFromStoryboard,
 }: AssetToolbarProps) {
   return (
     <div className="flex items-center gap-4 p-4 border-b border-gray-800 bg-gray-950">
@@ -125,6 +129,13 @@ export default function AssetToolbar({
         className="px-3 py-1.5 bg-orange-600 hover:bg-orange-500 disabled:bg-gray-700 text-white text-sm rounded-lg transition-colors whitespace-nowrap"
       >
         {batchExtracting ? '批量提取中...' : '全集批量提取'}
+      </button>
+      <button
+        onClick={onExtractFromStoryboardClick}
+        disabled={extractingFromStoryboard || extracting || batchExtracting}
+        className="px-3 py-1.5 bg-teal-600 hover:bg-teal-500 disabled:bg-gray-700 text-white text-sm rounded-lg transition-colors whitespace-nowrap"
+      >
+        {extractingFromStoryboard ? '提取中...' : '从分镜提取'}
       </button>
       <button
         onClick={onExtractClick}

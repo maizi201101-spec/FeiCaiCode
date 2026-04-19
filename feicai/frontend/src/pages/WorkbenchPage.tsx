@@ -46,7 +46,7 @@ export default function WorkbenchPage() {
           ) : activeTab === 1 ? (
             <Tab1Assets projectId={projectId} episodeId={episode?.id ?? null} onGoToTab0={handleGoToTab0} />
           ) : activeTab === 2 ? (
-            <Tab2Storyboard episodeId={episode?.id ?? null} />
+            <Tab2Storyboard projectId={projectId} episodeId={episode?.id ?? null} />
           ) : activeTab === 3 ? (
             episode ? (
               <Tab3Assembly

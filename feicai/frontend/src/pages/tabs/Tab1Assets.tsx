@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react'
 import AssetToolbar from '../../components/assets/AssetToolbar'
 import AssetGrid from '../../components/assets/AssetGrid'
 import ClusterLogPanel from '../../components/assets/ClusterLogPanel'
+import CostumeCollapseView from '../../components/assets/CostumeCollapseView'
 import { useAssets } from '../../hooks/useAssets'
 import { useEpisodes } from '../../hooks/useProjects'
-import { getClusterLog } from '../../api/assets'
-import type { AssetType } from '../../api/assets'
+import { getClusterLog, extractFromStoryboard } from '../../api/assets'
+import type { AssetType, ExtractFromStoryboardResult } from '../../api/assets'
 
 interface Tab1AssetsProps {
   projectId: number
@@ -34,6 +35,8 @@ export default function Tab1Assets({ projectId, episodeId, onGoToTab0 }: Tab1Ass
   const [showExtractModal, setShowExtractModal] = useState(false)
   const [batchExtracting, setBatchExtracting] = useState(false)
   const [batchProgress, setBatchProgress] = useState('')
+  const [extractingFromStoryboard, setExtractingFromStoryboard] = useState(false)
+  const [collapseViewData, setCollapseViewData] = useState<ExtractFromStoryboardResult | null>(null)
   const [clusterLogOpen, setClusterLogOpen] = useState(false)
   const [hasClusterLog, setHasClusterLog] = useState(false)
   const [addForm, setAddForm] = useState({
@@ -95,8 +98,29 @@ export default function Tab1Assets({ projectId, episodeId, onGoToTab0 }: Tab1Ass
     }
   }
 
-  // 检测是否有聚类日志
-  useEffect(() => {
+  const handleExtractFromStoryboard = async () => {
+    if (!episodeId) {
+      alert('请先选择集数')
+      return
+    }
+    setExtractingFromStoryboard(true)
+    try {
+      const result = await extractFromStoryboard(episodeId)
+      setCollapseViewData(result)
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '从分镜提取失败')
+    } finally {
+      setExtractingFromStoryboard(false)
+    }
+  }
+
+  const handleCollapseConfirm = async () => {
+    setCollapseViewData(null)
+    // 资产已在后端写入，刷新列表
+    window.location.reload()
+  }
+
+  // 检测是否有聚类日志  useEffect(() => {
     getClusterLog(projectId)
       .then((log) => setHasClusterLog((log.clusters?.length ?? 0) > 0))
       .catch(() => {})
@@ -138,11 +162,13 @@ export default function Tab1Assets({ projectId, episodeId, onGoToTab0 }: Tab1Ass
         onSearchChange={setSearchQuery}
         onExtractClick={() => setShowExtractModal(true)}
         onBatchExtractClick={handleBatchExtract}
+        onExtractFromStoryboardClick={handleExtractFromStoryboard}
         onAddClick={() => setShowAddModal(true)}
         onOpenClusterLog={() => setClusterLogOpen(true)}
         hasClusterLog={hasClusterLog}
         extracting={extracting}
         batchExtracting={batchExtracting}
+        extractingFromStoryboard={extractingFromStoryboard}
       />
 
       {error && (
@@ -295,6 +321,14 @@ export default function Tab1Assets({ projectId, episodeId, onGoToTab0 }: Tab1Ass
             </div>
           </div>
         </div>
+      )}
+      {/* 从分镜提取 - 装扮坍缩确认弹窗 */}
+      {collapseViewData && (
+        <CostumeCollapseView
+          collapsedData={collapseViewData.collapsed_refs}
+          onConfirm={handleCollapseConfirm}
+          onCancel={() => setCollapseViewData(null)}
+        />
       )}
     </div>
   )

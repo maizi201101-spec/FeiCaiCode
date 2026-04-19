@@ -300,6 +300,63 @@ export function getImageUrl(projectId: number, assetType: AssetType, assetId: st
   return `${BASE}/projects/${projectId}/assets/${assetType}/${assetId}/images/${imageIndex}/file`
 }
 
+// ========== v1.7 从分镜提取资产 API ==========
+
+export interface StoryboardCollapsedCharacter {
+  name: string
+  costumes: string[]
+  episodes: string[]
+}
+
+export interface ExtractFromStoryboardResult {
+  status: string
+  characters_count: number
+  scenes_count: number
+  props_count: number
+  collapsed_refs: {
+    characters: StoryboardCollapsedCharacter[]
+    scenes: Array<{ name: string; episodes: string[] }>
+    props: Array<{ name: string; episodes: string[] }>
+  }
+}
+
+export interface CostumeEntry {
+  label: string
+  aliases: string[]
+  episodes: string[]
+  count: number
+}
+
+export interface CharacterCostumes {
+  character_name: string
+  costumes: CostumeEntry[]
+}
+
+export interface CostumeRegistry {
+  version: string
+  characters: CharacterCostumes[]
+  updated_at: string
+}
+
+export async function extractFromStoryboard(
+  episodeId: number
+): Promise<ExtractFromStoryboardResult> {
+  const res = await fetch(`${BASE}/episodes/${episodeId}/assets/extract-from-storyboard`, {
+    method: 'POST',
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error((err as { detail?: string }).detail || '从分镜提取资产失败')
+  }
+  return res.json()
+}
+
+export async function getCostumeRegistry(projectId: number): Promise<CostumeRegistry> {
+  const res = await fetch(`${BASE}/projects/${projectId}/costume-registry`)
+  if (!res.ok) throw new Error('获取装扮注册表失败')
+  return res.json()
+}
+
 // ========== 聚类审核日志 API ==========
 
 export interface ClusterEntry {
