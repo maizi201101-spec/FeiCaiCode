@@ -7,9 +7,10 @@ import type { AssetType } from '../../api/assets'
 interface Tab1AssetsProps {
   projectId: number
   episodeId: number | null
+  onGoToTab0?: () => void  // 跳转到 Tab 0 的回调
 }
 
-export default function Tab1Assets({ projectId, episodeId }: Tab1AssetsProps) {
+export default function Tab1Assets({ projectId, episodeId, onGoToTab0 }: Tab1AssetsProps) {
   const {
     assets,
     loading,
@@ -104,13 +105,33 @@ export default function Tab1Assets({ projectId, episodeId }: Tab1AssetsProps) {
 
       {/* 资产网格 */}
       <div className="flex-1 overflow-auto">
-        <AssetGrid
-          assets={assets}
-          projectId={projectId}
-          onUpdate={editAsset}
-          onDelete={deleteAsset}
-          onAddClick={() => setShowAddModal(true)}
-        />
+        {assets.length === 0 && !extracting ? (
+          <div className="flex flex-col items-center justify-center h-full gap-4">
+            <div className="text-gray-400">暂无资产数据</div>
+            {onGoToTab0 && (
+              <button
+                onClick={onGoToTab0}
+                className="text-sm text-indigo-400 hover:text-indigo-300"
+              >
+                请先在「剧本管理」导入剧本
+              </button>
+            )}
+            <button
+              onClick={() => setShowExtractModal(true)}
+              className="text-sm text-gray-400 hover:text-gray-300"
+            >
+              或点击「提取资产」手动提取
+            </button>
+          </div>
+        ) : (
+          <AssetGrid
+            assets={assets}
+            projectId={projectId}
+            onUpdate={editAsset}
+            onDelete={deleteAsset}
+            onAddClick={() => setShowAddModal(true)}
+          />
+        )}
       </div>
 
       {/* 新增资产弹窗 */}

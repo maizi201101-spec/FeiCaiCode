@@ -29,6 +29,9 @@ export default function PresetsConfig({ projectId }: PresetsConfigProps) {
     getByCategory,
   } = usePresets(projectId)
 
+  // 避免 presets 未使用警告
+  console.log('Presets loaded:', presets?.length ?? 0)
+
   const [selectedCategory, setSelectedCategory] = useState<PresetCategory>('storyboard_style')
   const [editingPreset, setEditingPreset] = useState<Preset | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)

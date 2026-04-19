@@ -20,8 +20,8 @@ interface ProvidersConfigProps {
 
 export default function ProvidersConfig({ projectId }: ProvidersConfigProps) {
   const {
-    providers,
-    projectDefaults,
+    // providers,  // TODO: 显示提供商列表
+    // projectDefaults,  // TODO: 显示项目默认提供商
     loading,
     error,
     create,
