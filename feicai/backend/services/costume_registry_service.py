@@ -174,6 +174,61 @@ class CostumeRegistryService:
         return "\n".join(lines)
 
     @staticmethod
+    def to_llm_context_filtered(registry: CostumeRegistry, character_names: set) -> str:
+        """
+        将注册表转为简短文本格式（按集过滤），只注入本集剧本中出现的角色
+
+        Args:
+            registry: 装扮注册表
+            character_names: 本集剧本中出现的角色名集合
+
+        Returns:
+            格式化的文本，只包含 character_names 中的角色
+        """
+        if not registry.characters or not character_names:
+            return ""
+
+        lines = ["【装扮注册表】"]
+        matched_any = False
+
+        for char_name, char_costumes in registry.characters.items():
+            # 只注入本集出现的角色
+            if char_name not in character_names:
+                continue
+
+            if not char_costumes.costumes:
+                continue
+
+            matched_any = True
+            costume_strs = []
+            for entry in char_costumes.costumes:
+                # 格式：装扮名（集数范围）
+                if len(entry.episodes) == 1:
+                    ep_range = entry.episodes[0]
+                elif len(entry.episodes) > 1:
+                    # 尝试压缩连续集数
+                    first = entry.episodes[0]
+                    last = entry.episodes[-1]
+                    if len(entry.episodes) > 2:
+                        ep_range = f"{first}-{last}"
+                    else:
+                        ep_range = "、".join(entry.episodes)
+                else:
+                    ep_range = ""
+
+                costume_strs.append(f"{entry.label}（{ep_range}）")
+
+            lines.append(f"{char_name}：{'、'.join(costume_strs)}")
+
+        if not matched_any:
+            return ""
+
+        lines.append("")
+        lines.append("请严格使用上述装扮词，不要创造新称呼。")
+
+        return "\n".join(lines)
+
+    @staticmethod
     def update_aliases(
         project_path: str,
         character_name: str,

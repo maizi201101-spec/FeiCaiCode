@@ -164,10 +164,19 @@ async def plan_shots_by_ai(episode_id: int) -> tuple[ShotsCollection, list[str]]
 
     script_content = script_file.read_text(encoding="utf-8")
 
-    # 加载装扮注册表
+    # 加载装扮注册表，按集过滤（只注入本集剧本中出现的角色）
     from services.costume_registry_service import CostumeRegistryService
     registry = CostumeRegistryService.load_registry(project_path)
-    costume_context = CostumeRegistryService.to_llm_context(registry)
+
+    # 从剧本中提取角色名集合（简单正则：匹配中文姓名模式）
+    import re
+    character_names = set()
+    # 匹配模式：2-4个中文字符，后跟冒号或「」（对话标记）
+    name_pattern = r'([一-龥]{2,4})(?:：|:|「)'
+    for match in re.finditer(name_pattern, script_content):
+        character_names.add(match.group(1))
+
+    costume_context = CostumeRegistryService.to_llm_context_filtered(registry, character_names)
 
     # 读取激活的分镜风格预设（无则使用默认角色设定）
     project_id = episode["project_id"]

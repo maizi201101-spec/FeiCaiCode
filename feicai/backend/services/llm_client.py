@@ -1,10 +1,14 @@
 import httpx
 import json
 import aiosqlite
+import asyncio
 from pathlib import Path
 from typing import Optional
 
 DB_PATH = Path(__file__).parent.parent / "feicai.db"
+
+# 全局 LLM 并发限制（最多同时 3 个请求）
+_llm_semaphore = asyncio.Semaphore(3)
 
 DEFAULT_LLM_CONFIG = {
     "api_key": "",
@@ -36,7 +40,7 @@ async def call_llm(
     temperature: float = 0.7,
     max_tokens: int = 2000,
 ) -> str:
-    """调用 LLM API，返回生成文本"""
+    """调用 LLM API，返回生成文本（全局并发限制：最多同时 3 个请求）"""
     config = await get_llm_config()
     if not config["api_key"]:
         raise ValueError("LLM API Key 未配置，请在设置中添加")
@@ -46,21 +50,22 @@ async def call_llm(
         messages.append({"role": "system", "content": system_prompt})
     messages.append({"role": "user", "content": prompt})
 
-    async with httpx.AsyncClient(timeout=180.0) as client:
-        resp = await client.post(
-            f"{config['base_url']}/chat/completions",
-            headers={
-                "Authorization": f"Bearer {config['api_key']}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "model": config["model"],
-                "messages": messages,
-                "temperature": temperature,
-                "max_tokens": max_tokens,
-            },
-        )
-        if resp.status_code != 200:
-            raise ValueError(f"LLM API 调用失败: {resp.status_code} - {resp.text}")
-        data = resp.json()
-        return data["choices"][0]["message"]["content"]
+    async with _llm_semaphore:
+        async with httpx.AsyncClient(timeout=180.0) as client:
+            resp = await client.post(
+                f"{config['base_url']}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {config['api_key']}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": config["model"],
+                    "messages": messages,
+                    "temperature": temperature,
+                    "max_tokens": max_tokens,
+                },
+            )
+            if resp.status_code != 200:
+                raise ValueError(f"LLM API 调用失败: {resp.status_code} - {resp.text}")
+            data = resp.json()
+            return data["choices"][0]["message"]["content"]
