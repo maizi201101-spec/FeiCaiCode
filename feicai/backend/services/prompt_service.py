@@ -171,6 +171,8 @@ async def generate_prompts_by_ai(episode_id: int) -> PromptsCollection:
     video_style = await get_active_preset_content(project_id, PresetCategory.VIDEO_PROMPT_STYLE)
     image_style = await get_active_preset_content(project_id, PresetCategory.IMAGE_PROMPT_STYLE)
     special_effects = await get_active_special_effects(project_id)
+    structure_rules = await get_active_preset_content(project_id, PresetCategory.PROMPT_STRUCTURE_RULES)
+
     style_block = f"\n\n## 视频提示词风格\n{video_style}" if video_style else ""
     image_style_block = f"\n\n## 图片提示词风格\n{image_style}" if image_style else ""
     effects_block = (
@@ -178,10 +180,8 @@ async def generate_prompts_by_ai(episode_id: int) -> PromptsCollection:
         + "\n".join(f"- {e}" for e in special_effects)
     ) if special_effects else ""
 
-    # system prompt：角色 + 固定格式规则 + 激活的风格预设
-    system_prompt = f"""你是一个专业的影视提示词生成专家，负责为每个分镜头生成图片提示词和视频提示词。{style_block}{image_style_block}
-
-## 提示词格式要求
+    # 默认格式规则（如果没有激活的预设）
+    default_structure_rules = """## 提示词格式要求
 
 **图片提示词格式**（自然短句，分号分隔）：
 ```
@@ -209,7 +209,14 @@ async def generate_prompts_by_ai(episode_id: int) -> PromptsCollection:
 2. 资产引用顺序固定：人物→场景→道具
 3. 镜头无台词时，省略【台词】字段
 4. 图片提示词用分号分隔，不加【】
-5. 视频提示词必须用【】字段格式
+5. 视频提示词必须用【】字段格式"""
+
+    structure_block = structure_rules if structure_rules else default_structure_rules
+
+    # system prompt：角色 + 格式规则（可插拔）+ 风格预设
+    system_prompt = f"""你是一个专业的影视提示词生成专家，负责为每个分镜头生成图片提示词和视频提示词。{style_block}{image_style_block}
+
+{structure_block}
 
 ## 输出格式（严格 JSON，不要添加任何额外文字）
 {{

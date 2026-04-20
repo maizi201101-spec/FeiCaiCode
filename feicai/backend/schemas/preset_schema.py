@@ -16,6 +16,7 @@ class PresetCategory(str, Enum):
     SPECIAL_EFFECT = "special_effect"          # 特殊效果预设
     ASSET_EXTRACTION = "asset_extraction"      # 资产提取规则
     VIDEO_MODEL_SPEC = "video_model_spec"      # 视频模型规格
+    PROMPT_STRUCTURE_RULES = "prompt_structure_rules"  # 提示词结构化格式规则
 
 
 class ModelSpec(BaseModel):
