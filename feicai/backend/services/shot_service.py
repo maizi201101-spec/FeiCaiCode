@@ -329,8 +329,9 @@ async def update_shot_field(episode_id: int, shot_id: str, updates: ShotUpdate) 
         return None
 
     # 应用更新（model_copy 保留所有未修改字段，包括 asset_refs / asset_bindings）
+    # 用 __iter__ 迭代保留嵌套 Pydantic 模型实例，避免 model_dump 将其转为 dict 导致类型退化
     current_shot = collection.shots[shot_index]
-    update_data = updates.model_dump(exclude_none=True)
+    update_data = {k: v for k, v in updates if v is not None}
     updated_shot = current_shot.model_copy(update=update_data)
 
     collection.shots[shot_index] = updated_shot
