@@ -54,6 +54,9 @@ class GlobalSettings(BaseModel):
     default_image_model: str = "dall-e-3"
     default_image_size: str = "1024x1024"
 
+    # 分镜规划并发数（1/2/3）
+    plan_concurrency: int = 1
+
 
 class SpecialPrompt(BaseModel):
     """特殊提示词配置（第2块）"""

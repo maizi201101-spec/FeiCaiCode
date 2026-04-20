@@ -383,7 +383,7 @@ async def plan_shots_by_ai(episode_id: int) -> tuple[ShotsCollection, list[str]]
     if asset_refs_list:
         episode_number = episode['number']
         episode_id_str = f"EP{episode_number:02d}"
-        CostumeRegistryService.upsert_from_asset_refs(project_path, episode_id_str, asset_refs_list)
+        await CostumeRegistryService.upsert_from_asset_refs(project_path, episode_id_str, asset_refs_list)
 
     # 生成 storyboard.md
     await generate_storyboard_md(episode_id, collection)

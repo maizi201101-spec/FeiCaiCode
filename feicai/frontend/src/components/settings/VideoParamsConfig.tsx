@@ -94,6 +94,23 @@ export default function VideoParamsConfig({ settings, onChange }: VideoParamsCon
               <option value="1:1">1:1（方形）</option>
             </select>
           </div>
+
+          {/* 分镜规划并发数 */}
+          <div>
+            <label className="block text-sm text-gray-400 mb-1">
+              分镜规划并发数
+            </label>
+            <select
+              value={settings.plan_concurrency ?? 1}
+              onChange={(e) => handleChange('plan_concurrency', Number(e.target.value))}
+              className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-indigo-500"
+            >
+              <option value="1">1（顺序执行）</option>
+              <option value="2">2（2 集并发）</option>
+              <option value="3">3（3 集并发）</option>
+            </select>
+            <p className="text-xs text-gray-500 mt-1">批量规划所有集时的并发数，上限受 LLM 全局限速约束</p>
+          </div>
         </div>
       </div>
     </div>

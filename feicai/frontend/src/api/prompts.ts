@@ -37,6 +37,8 @@ export interface GlobalSettings {
   // 图片生成默认参数
   default_image_model: string
   default_image_size: string
+  // 分镜规划并发数
+  plan_concurrency: number
 }
 
 export interface SpecialPrompt {

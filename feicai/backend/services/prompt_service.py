@@ -376,6 +376,8 @@ async def get_global_settings(project_id: int) -> GlobalSettings:
                 settings.default_image_model = value
             elif setting_name == "default_image_size":
                 settings.default_image_size = value
+            elif setting_name == "plan_concurrency":
+                settings.plan_concurrency = int(value)
 
     # 2. 如果项目级 LLM 配置不存在，从全局读取
     if not settings.llm_api_key or not settings.llm_base_url or not settings.llm_model:
@@ -422,6 +424,7 @@ async def update_global_settings(project_id: int, settings: GlobalSettings) -> N
         ("jimeng_cli_path", settings.jimeng_cli_path),
         ("default_image_model", settings.default_image_model),
         ("default_image_size", settings.default_image_size),
+        ("plan_concurrency", str(settings.plan_concurrency)),
     ]
 
     async with aiosqlite.connect(DB_PATH) as db:

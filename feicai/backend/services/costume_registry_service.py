@@ -5,6 +5,7 @@
 
 import json
 import os
+import asyncio
 from datetime import datetime
 from typing import Dict, List, Optional
 from pathlib import Path
@@ -14,6 +15,14 @@ from schemas.costume_registry_schema import (
     CharacterCostumes,
     CostumeEntry
 )
+
+# 按项目路径维护写入锁，防止并发规划时 costume_registry 写入竞争
+_registry_locks: Dict[str, asyncio.Lock] = {}
+
+def _get_registry_lock(project_path: str) -> asyncio.Lock:
+    if project_path not in _registry_locks:
+        _registry_locks[project_path] = asyncio.Lock()
+    return _registry_locks[project_path]
 
 
 class CostumeRegistryService:
@@ -61,70 +70,72 @@ class CostumeRegistryService:
             json.dump(registry.model_dump(), f, ensure_ascii=False, indent=2)
 
     @staticmethod
-    def upsert_from_asset_refs(
+    async def upsert_from_asset_refs(
         project_path: str,
         episode_id: str,
         asset_refs_list: List[Dict]
     ) -> None:
         """
-        从分镜 asset_refs 列表中提取装扮信息，upsert 到注册表
+        从分镜 asset_refs 列表中提取装扮信息，upsert 到注册表（加文件锁防并发竞争）
 
         Args:
             project_path: 项目路径
             episode_id: 集数 ID（如 "EP01"）
             asset_refs_list: 所有镜头的 asset_refs 列表
         """
-        registry = CostumeRegistryService.load_registry(project_path)
+        lock = _get_registry_lock(project_path)
+        async with lock:
+            registry = CostumeRegistryService.load_registry(project_path)
 
-        # 收集本集出现的 (角色名, 装扮) 组合
-        character_costumes: Dict[str, set] = {}
+            # 收集本集出现的 (角色名, 装扮) 组合
+            character_costumes: Dict[str, set] = {}
 
-        for asset_refs in asset_refs_list:
-            if not asset_refs:
-                continue
-
-            characters = asset_refs.get("characters", [])
-            for char in characters:
-                name = char.get("name", "").strip()
-                costume = char.get("costume", "").strip()
-
-                if not name or not costume:
+            for asset_refs in asset_refs_list:
+                if not asset_refs:
                     continue
 
-                if name not in character_costumes:
-                    character_costumes[name] = set()
-                character_costumes[name].add(costume)
+                characters = asset_refs.get("characters", [])
+                for char in characters:
+                    name = char.get("name", "").strip()
+                    costume = char.get("costume", "").strip()
 
-        # Upsert 到注册表
-        for char_name, costumes in character_costumes.items():
-            if char_name not in registry.characters:
-                registry.characters[char_name] = CharacterCostumes(costumes=[])
+                    if not name or not costume:
+                        continue
 
-            char_costumes = registry.characters[char_name]
+                    if name not in character_costumes:
+                        character_costumes[name] = set()
+                    character_costumes[name].add(costume)
 
-            for costume_label in costumes:
-                # 查找是否已存在该装扮
-                existing = None
-                for entry in char_costumes.costumes:
-                    if entry.label == costume_label:
-                        existing = entry
-                        break
+            # Upsert 到注册表
+            for char_name, costumes in character_costumes.items():
+                if char_name not in registry.characters:
+                    registry.characters[char_name] = CharacterCostumes(costumes=[])
 
-                if existing:
-                    # 更新 episodes 列表（去重）
-                    if episode_id not in existing.episodes:
-                        existing.episodes.append(episode_id)
-                        existing.episodes.sort()
-                else:
-                    # 新增装扮条目
-                    char_costumes.costumes.append(CostumeEntry(
-                        label=costume_label,
-                        aliases=[],
-                        episodes=[episode_id],
-                        variant_id=None
-                    ))
+                char_costumes = registry.characters[char_name]
 
-        CostumeRegistryService.save_registry(project_path, registry)
+                for costume_label in costumes:
+                    # 查找是否已存在该装扮
+                    existing = None
+                    for entry in char_costumes.costumes:
+                        if entry.label == costume_label:
+                            existing = entry
+                            break
+
+                    if existing:
+                        # 更新 episodes 列表（去重）
+                        if episode_id not in existing.episodes:
+                            existing.episodes.append(episode_id)
+                            existing.episodes.sort()
+                    else:
+                        # 新增装扮条目
+                        char_costumes.costumes.append(CostumeEntry(
+                            label=costume_label,
+                            aliases=[],
+                            episodes=[episode_id],
+                            variant_id=None
+                        ))
+
+            CostumeRegistryService.save_registry(project_path, registry)
 
     @staticmethod
     def to_llm_context(registry: CostumeRegistry) -> str:

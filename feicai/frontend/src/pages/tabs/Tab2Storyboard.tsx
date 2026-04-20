@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useShots } from '../../hooks/useShots'
+import { planAllShots } from '../../api/shots'
 
 import ShotTable from '../../components/storyboard/ShotTable'
 import GroupView from '../../components/storyboard/GroupView'
@@ -12,6 +13,7 @@ interface Tab2StoryboardProps {
 
 export default function Tab2Storyboard({ projectId, episodeId }: Tab2StoryboardProps) {
   const [viewMode, setViewMode] = useState<'table' | 'group'>('group')
+  const [planningAll, setPlanningAll] = useState(false)
 
   const {
     shotsCollection,
@@ -35,6 +37,19 @@ export default function Tab2Storyboard({ projectId, episodeId }: Tab2StoryboardP
       await planShots()
     } catch (e) {
       alert(e instanceof Error ? e.message : '分镜规划失败')
+    }
+  }
+
+  const handlePlanAll = async () => {
+    if (!confirm(`确定要批量规划所有集分镜吗？这将覆盖已有分镜数据。`)) return
+    setPlanningAll(true)
+    try {
+      const result = await planAllShots(projectId)
+      alert(`${result.message}\n任务ID: ${result.taskId}`)
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '批量规划失败')
+    } finally {
+      setPlanningAll(false)
     }
   }
 
@@ -136,6 +151,13 @@ export default function Tab2Storyboard({ projectId, episodeId }: Tab2StoryboardP
             className="px-3 py-1 bg-blue-600 text-white rounded disabled:bg-gray-700"
           >
             {generating ? '规划中...' : '重新规划'}
+          </button>
+          <button
+            onClick={handlePlanAll}
+            disabled={planningAll || generating}
+            className="px-3 py-1 bg-purple-600 text-white rounded disabled:bg-gray-700 hover:bg-purple-700"
+          >
+            {planningAll ? '批量规划中...' : '批量规划所有集'}
           </button>
         </div>
       </div>

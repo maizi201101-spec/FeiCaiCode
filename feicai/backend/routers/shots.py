@@ -3,9 +3,14 @@
 分镜规划、获取、更新、归组调整
 """
 
+import asyncio
+
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from fastapi.responses import PlainTextResponse
 from typing import List
+
+import aiosqlite
+from pathlib import Path
 
 from schemas.shots_schema import (
     Shot, ShotGroup, ShotsCollection, ShotUpdate, GroupUpdate
@@ -22,6 +27,9 @@ from services.task_service import create_task, update_task_status
 from services.script_service import get_episode_info
 
 router = APIRouter(prefix="/api/episodes/{episode_id}/shots", tags=["shots"])
+project_shots_router = APIRouter(prefix="/api/projects/{project_id}/shots", tags=["shots"])
+
+DB_PATH = Path(__file__).parent.parent / "feicai.db"
 
 
 async def execute_shot_planning(task_id: int, episode_id: int):
@@ -140,3 +148,70 @@ async def get_storyboard_markdown(episode_id: int):
 
     md_content = await generate_storyboard_md(episode_id, collection)
     return md_content
+
+
+async def _execute_plan_all(task_id: int, project_id: int, episode_ids: list[int], concurrency: int):
+    """批量规划所有集分镜（后台任务）"""
+    await update_task_status(task_id, "processing")
+
+    sem = asyncio.Semaphore(concurrency)
+    completed = 0
+    failed = 0
+
+    async def _plan_one(ep_id: int):
+        nonlocal completed, failed
+        async with sem:
+            try:
+                collection, _ = await plan_shots_by_ai(ep_id)
+                if collection.shots:
+                    completed += 1
+                else:
+                    failed += 1
+            except Exception as e:
+                print(f"批量规划 episode {ep_id} 失败: {e}")
+                failed += 1
+
+    await asyncio.gather(*[_plan_one(ep_id) for ep_id in episode_ids])
+
+    result_msg = f"共 {len(episode_ids)} 集：成功 {completed}，失败 {failed}"
+    status = "completed" if completed > 0 else "failed"
+    if status == "failed":
+        await update_task_status(task_id, "failed", error=result_msg)
+    else:
+        await update_task_status(task_id, status, result=result_msg)
+
+
+@project_shots_router.post("/plan-all")
+async def plan_all_shots(project_id: int, background_tasks: BackgroundTasks):
+    """批量规划项目所有集分镜（并发数由项目设置决定）"""
+    # 查询所有集数
+    async with aiosqlite.connect(DB_PATH) as db:
+        rows = await (await db.execute(
+            "SELECT id FROM episodes WHERE project_id = ? ORDER BY number",
+            (project_id,)
+        )).fetchall()
+
+    if not rows:
+        raise HTTPException(404, "项目下无集数")
+
+    episode_ids = [r[0] for r in rows]
+
+    # 读取并发数设置
+    from services.prompt_service import get_global_settings
+    settings = await get_global_settings(project_id)
+    concurrency = max(1, min(3, settings.plan_concurrency))
+
+    # 创建任务记录（project 级，无 episode_id）
+    task_id = await create_task(
+        project_id=project_id,
+        task_type="plan_all_shots",
+        payload={"episode_ids": episode_ids, "concurrency": concurrency}
+    )
+
+    background_tasks.add_task(_execute_plan_all, task_id, project_id, episode_ids, concurrency)
+
+    return {
+        "task_id": task_id,
+        "status": "pending",
+        "message": f"批量规划任务已创建（{len(episode_ids)} 集，并发数 {concurrency}）"
+    }

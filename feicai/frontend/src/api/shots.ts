@@ -168,3 +168,15 @@ export async function getStoryboardMd(episodeId: number): Promise<string> {
   }
   return res.text()
 }
+
+export async function planAllShots(projectId: number): Promise<{ taskId: number; status: string; message: string }> {
+  const res = await fetch(`${BASE}/projects/${projectId}/shots/plan-all`, {
+    method: 'POST',
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error((err as { detail?: string }).detail || '批量规划失败')
+  }
+  const data = await res.json()
+  return { taskId: data.task_id, status: data.status, message: data.message }
+}
