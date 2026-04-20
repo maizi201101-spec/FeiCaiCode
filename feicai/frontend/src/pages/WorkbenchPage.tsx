@@ -26,12 +26,12 @@ export default function WorkbenchPage() {
     // 清除 focusGroupId 需要在 Tab3 定位后执行（由 Tab3 控制）
   }
 
-  // 处理 Tab0 跳转到 Tab1
+  // 处理 Tab0 跳转到 Tab1（分镜规划，swap后 index=1）
   const handleGoToTab1 = () => {
-    setActiveTab(1) // 切换到 Tab 1（资产库）
+    setActiveTab(1) // 切换到 Tab 1（分镜规划）
   }
 
-  // 处理 Tab1 跳转到 Tab0
+  // 处理资产库跳转到 Tab0
   const handleGoToTab0 = () => {
     setActiveTab(0) // 切换到 Tab 0（剧本管理）
   }
@@ -42,11 +42,11 @@ export default function WorkbenchPage() {
         <>
           {/* Tab 内容 */}
           {activeTab === 0 ? (
-            <Tab0ScriptManagement projectId={projectId} onGoToTab1={handleGoToTab1} onSplitConfirmed={onEpisodesRefresh} />
+            <Tab0ScriptManagement projectId={projectId} episodeId={episode?.id ?? null} onGoToTab1={handleGoToTab1} onSplitConfirmed={onEpisodesRefresh} />
           ) : activeTab === 1 ? (
-            <Tab1Assets projectId={projectId} episodeId={episode?.id ?? null} onGoToTab0={handleGoToTab0} />
-          ) : activeTab === 2 ? (
             <Tab2Storyboard projectId={projectId} episodeId={episode?.id ?? null} />
+          ) : activeTab === 2 ? (
+            <Tab1Assets projectId={projectId} episodeId={episode?.id ?? null} onGoToTab0={handleGoToTab0} />
           ) : activeTab === 3 ? (
             episode ? (
               <Tab3Assembly

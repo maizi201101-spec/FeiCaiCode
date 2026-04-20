@@ -109,7 +109,7 @@ export default function Stage2List({
           onClick={onGoToAssetExtraction}
           className="px-4 py-2 bg-indigo-600 text-white rounded text-sm font-medium hover:bg-indigo-700"
         >
-          进入资产提取 →
+          进入分镜规划 →
         </button>
       </div>
     </div>

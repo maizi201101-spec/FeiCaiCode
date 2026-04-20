@@ -2,6 +2,7 @@
  * 两阶段结构：导入全集 + 分集确认 / 分集列表 + 单集预览
  */
 
+import { useEffect } from 'react'
 import { useScriptManagement } from '../../hooks/useScriptManagement'
 import { useSplitDetection } from '../../hooks/useSplitDetection'
 import Stage1Import from '../../components/script/Stage1Import'
@@ -10,11 +11,12 @@ import { type EpisodeSplitResult, type ScriptType, regenerateAllSummaries } from
 
 interface Tab0ScriptManagementProps {
   projectId: number
+  episodeId: number | null
   onGoToTab1: () => void
   onSplitConfirmed?: () => void
 }
 
-export default function Tab0ScriptManagement({ projectId, onGoToTab1, onSplitConfirmed }: Tab0ScriptManagementProps) {
+export default function Tab0ScriptManagement({ projectId, episodeId, onGoToTab1, onSplitConfirmed }: Tab0ScriptManagementProps) {
   const {
     stage,
     setStage,
@@ -39,6 +41,13 @@ export default function Tab0ScriptManagement({ projectId, onGoToTab1, onSplitCon
     detect,
     clear,
   } = useSplitDetection(projectId)
+
+  // 顶部集数选择联动：当 episodeId 改变且已在 stage2，自动选中对应集
+  useEffect(() => {
+    if (stage !== 'stage2' || !episodeId || episodeStatuses.length === 0) return
+    const ep = episodeStatuses.find(e => e.episode_id === episodeId)
+    if (ep) handleSelectEpisode(ep)
+  }, [episodeId, stage, episodeStatuses])
 
   // 确认分集
   const handleConfirm = async () => {

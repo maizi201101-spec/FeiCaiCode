@@ -53,9 +53,37 @@ export default function EpisodeScriptPanel({
 
   return (
     <div className="flex flex-col h-full gap-4">
-      {/* 剧本全文 */}
-      <div className="flex-1 bg-gray-900 rounded-lg border border-gray-700 overflow-hidden">
+      {/* 本集梗概（固定高度，在剧本上方）*/}
+      <div className="flex-shrink-0 bg-gray-900 rounded-lg border border-gray-700 overflow-hidden">
         <div className="px-4 py-2 bg-gray-800 border-b border-gray-700 flex items-center justify-between">
+          <span className="text-sm font-medium text-gray-300">本集梗概</span>
+          {episodeDetail.has_summary && (
+            <button
+              onClick={onRegenerateSummary}
+              disabled={generatingSummary}
+              className="text-xs text-indigo-400 hover:text-indigo-300 disabled:opacity-50"
+            >
+              {generatingSummary ? '生成中...' : '重新生成'}
+            </button>
+          )}
+        </div>
+        <div className="p-4 max-h-36 overflow-y-auto">
+          {generatingSummary ? (
+            <div className="flex items-center justify-center py-4">
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-500"></div>
+              <span className="ml-2 text-gray-400">生成梗概...</span>
+            </div>
+          ) : episodeDetail.has_summary && episodeDetail.summary ? (
+            <div className="text-sm text-gray-300">{episodeDetail.summary}</div>
+          ) : (
+            <div className="text-gray-400 text-center">暂无梗概</div>
+          )}
+        </div>
+      </div>
+
+      {/* 剧本全文（flex-1 撑满剩余空间，内部滚动）*/}
+      <div className="flex-1 min-h-0 bg-gray-900 rounded-lg border border-gray-700 flex flex-col overflow-hidden">
+        <div className="px-4 py-2 bg-gray-800 border-b border-gray-700 flex-shrink-0 flex items-center justify-between">
           <span className="text-sm font-medium text-gray-300">
             EP{episodeDetail.episode_number.toString().padStart(2, '0')} 剧本全文
           </span>
@@ -84,9 +112,9 @@ export default function EpisodeScriptPanel({
               <textarea
                 value={editContent}
                 onChange={(e) => setEditContent(e.target.value)}
-                className="w-full h-64 bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm text-gray-200 resize-none focus:outline-none focus:border-indigo-500"
+                className="w-full flex-1 min-h-0 bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm text-gray-200 resize-none focus:outline-none focus:border-indigo-500"
               />
-              <div className="flex gap-2 justify-end">
+              <div className="flex gap-2 justify-end flex-shrink-0">
                 <button
                   onClick={() => setEditing(false)}
                   className="px-3 py-1 text-xs text-gray-400 hover:text-gray-200"
@@ -110,34 +138,6 @@ export default function EpisodeScriptPanel({
             </div>
           ) : (
             <div className="text-gray-400">暂无剧本</div>
-          )}
-        </div>
-      </div>
-
-      {/* 本集梗概 */}
-      <div className="bg-gray-900 rounded-lg border border-gray-700 overflow-hidden">
-        <div className="px-4 py-2 bg-gray-800 border-b border-gray-700 flex items-center justify-between">
-          <span className="text-sm font-medium text-gray-300">本集梗概</span>
-          {episodeDetail.has_summary && (
-            <button
-              onClick={onRegenerateSummary}
-              disabled={generatingSummary}
-              className="text-xs text-indigo-400 hover:text-indigo-300 disabled:opacity-50"
-            >
-              {generatingSummary ? '生成中...' : '重新生成'}
-            </button>
-          )}
-        </div>
-        <div className="p-4">
-          {generatingSummary ? (
-            <div className="flex items-center justify-center py-4">
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-500"></div>
-              <span className="ml-2 text-gray-400">生成梗概...</span>
-            </div>
-          ) : episodeDetail.has_summary && episodeDetail.summary ? (
-            <div className="text-sm text-gray-300">{episodeDetail.summary}</div>
-          ) : (
-            <div className="text-gray-400 text-center">暂无梗概</div>
           )}
         </div>
       </div>

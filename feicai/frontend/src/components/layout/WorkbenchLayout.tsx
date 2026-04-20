@@ -6,7 +6,7 @@ import TaskIndicator from './TaskIndicator'
 import { useEpisodes } from '../../hooks/useProjects'
 import { getProject } from '../../api/projects'
 
-const TABS = ['剧本管理', '资产库', '分镜规划', '装配与生成', '质检与确认'] as const
+const TABS = ['剧本管理', '分镜规划', '资产库', '装配与生成', '质检与确认'] as const
 
 interface EpisodeInfo {
   id: number
