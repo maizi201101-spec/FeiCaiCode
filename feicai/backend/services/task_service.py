@@ -256,7 +256,7 @@ async def delete_old_tasks(days: int = 7) -> int:
         cursor = await db.execute(
             """
             DELETE FROM tasks
-            WHERE status IN ('completed', 'failed')
+            WHERE status IN ('completed', 'failed', 'cancelled')
             AND updated_at < datetime('now', ?)
             """,
             [f"-{days} days"],
