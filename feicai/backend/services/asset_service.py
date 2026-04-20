@@ -315,6 +315,50 @@ def cluster_raw_mentions(
     return clusters
 
 
+def _deduplicate_fragments(fragments: list[str]) -> list[str]:
+    """
+    对 raw_fragments 列表去重（保留顺序，相同或高度相似的只保留第一条）
+
+    使用简单的字符串相似度判断：
+    - 完全相同：去重
+    - 长度差异 < 20% 且 bigram Jaccard >= 0.7：认定为重复
+    """
+    if not fragments:
+        return []
+
+    result = []
+    for frag in fragments:
+        frag = frag.strip()
+        if not frag:
+            continue
+
+        # 检查是否与已有片段重复
+        is_duplicate = False
+        for existing in result:
+            if frag == existing:
+                is_duplicate = True
+                break
+
+            # 长度相近且内容高度相似
+            len_ratio = min(len(frag), len(existing)) / max(len(frag), len(existing))
+            if len_ratio >= 0.8:
+                # 计算 bigram Jaccard 相似度
+                if len(frag) < 2 or len(existing) < 2:
+                    continue
+                bigrams_a = {frag[i:i+2] for i in range(len(frag)-1)}
+                bigrams_b = {existing[i:i+2] for i in range(len(existing)-1)}
+                intersection = bigrams_a & bigrams_b
+                union = bigrams_a | bigrams_b
+                if union and len(intersection) / len(union) >= 0.7:
+                    is_duplicate = True
+                    break
+
+        if not is_duplicate:
+            result.append(frag)
+
+    return result
+
+
 async def consolidate_entity_cluster(
     cluster: dict,
     existing_asset: Optional[dict] = None,
@@ -333,6 +377,8 @@ async def consolidate_entity_cluster(
     for ep in sorted(cluster["episodes"], key=lambda e: e.get("episode_number", 0)):
         ep_num = ep.get("episode_number", "?")
         fragments = ep.get("raw_fragments", [])
+        # 去重：相同或高度相似的描述只保留一条
+        fragments = _deduplicate_fragments(fragments)
         context = ep.get("context", "")
         frags_text = "；".join(fragments) if fragments else "（无外观描述）"
         episode_lines.append(f"第{ep_num}集 外观：{frags_text}\n第{ep_num}集 状态：{context}")
