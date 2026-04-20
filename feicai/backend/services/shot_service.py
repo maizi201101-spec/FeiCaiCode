@@ -46,8 +46,20 @@ async def read_shots(episode_id: int) -> ShotsCollection:
     content = shots_path.read_text(encoding="utf-8")
     data = json.loads(content)
 
-    shots = [
-        Shot(
+    shots = []
+    for s in data.get("shots", []):
+        # 解析 asset_refs
+        asset_refs = None
+        if "asset_refs" in s and s["asset_refs"]:
+            asset_refs_data = s["asset_refs"]
+            asset_refs = AssetRefs(
+                characters=[CharacterRef(**c) for c in asset_refs_data.get("characters", [])],
+                scenes=asset_refs_data.get("scenes", []),
+                props=asset_refs_data.get("props", []),
+                shot_annotations=asset_refs_data.get("shot_annotations", "")
+            )
+
+        shots.append(Shot(
             shot_id=s["shot_id"],
             group_id=s["group_id"],
             scene_id=s["scene_id"],
@@ -57,14 +69,13 @@ async def read_shots(episode_id: int) -> ShotsCollection:
             shot_size=ShotSize(s["shot_size"]),
             camera_move=CameraMove(s["camera_move"]),
             assets=s.get("assets", []),
+            asset_refs=asset_refs,
             frame_action=s["frame_action"],
             lighting=s.get("lighting"),
             screen_text=s.get("screen_text"),
             speech=[SpeechLine(**sp) for sp in s.get("speech", [])],
             time_of_day=s.get("time_of_day"),
-        )
-        for s in data.get("shots", [])
-    ]
+        ))
 
     groups = [
         ShotGroup(
