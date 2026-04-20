@@ -8,6 +8,8 @@ from schemas.assets_schema import (
     Character, Scene, Prop, AssetsCollection, Variant, ExtractProgress
 )
 from services.llm_client import call_llm
+from services.preset_service import get_active_preset_content
+from schemas.preset_schema import PresetCategory
 from services.script_service import get_episode_info, get_project_path
 
 DB_PATH = Path(__file__).parent.parent / "feicai.db"
@@ -121,7 +123,12 @@ async def extract_raw_mentions_from_episode(
 
     script_content = script_file.read_text(encoding="utf-8")
 
-    system_prompt = """你是短剧剧本分析助手，负责从剧本中提取角色、场景、道具的原始提及。
+    # 读取激活的资产提取预设（可覆盖默认角色设定）
+    extraction_style = await get_active_preset_content(project_id, PresetCategory.ASSET_EXTRACTION)
+    default_role = "你是短剧剧本分析助手，负责从剧本中提取角色、场景、道具的原始提及。"
+    role_line = extraction_style if extraction_style else default_role
+
+    system_prompt = f"""{role_line}
 
 任务规则（严格遵守）：
 1. 列出本集实际出现的所有角色、场景、关键道具

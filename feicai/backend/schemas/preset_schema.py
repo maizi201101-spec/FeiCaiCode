@@ -12,7 +12,9 @@ class PresetCategory(str, Enum):
     """预设分类"""
     STORYBOARD_STYLE = "storyboard_style"      # 分镜规划风格
     VIDEO_PROMPT_STYLE = "video_prompt_style"  # 视频提示词风格
+    IMAGE_PROMPT_STYLE = "image_prompt_style"  # 图片提示词风格
     SPECIAL_EFFECT = "special_effect"          # 特殊效果预设
+    ASSET_EXTRACTION = "asset_extraction"      # 资产提取规则
     VIDEO_MODEL_SPEC = "video_model_spec"      # 视频模型规格
 
 

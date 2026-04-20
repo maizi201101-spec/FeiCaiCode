@@ -9,7 +9,9 @@ const BASE = '/api'
 export type PresetCategory =
   | 'storyboard_style'
   | 'video_prompt_style'
+  | 'image_prompt_style'
   | 'special_effect'
+  | 'asset_extraction'
   | 'video_model_spec'
 
 export interface ModelSpec {
@@ -169,6 +171,8 @@ export async function getActiveEffects(projectId: number): Promise<string[]> {
 export const CATEGORY_LABELS: Record<PresetCategory, string> = {
   storyboard_style: '分镜规划风格',
   video_prompt_style: '视频提示词风格',
+  image_prompt_style: '图片提示词风格',
   special_effect: '特殊效果预设',
+  asset_extraction: '资产提取规则',
   video_model_spec: '视频模型规格',
 }
