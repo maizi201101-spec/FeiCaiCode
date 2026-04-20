@@ -1,10 +1,8 @@
 import { useState } from 'react'
 import { useShots } from '../../hooks/useShots'
-import { type ShotUpdatePayload } from '../../api/shots'
 
 import ShotTable from '../../components/storyboard/ShotTable'
 import GroupView from '../../components/storyboard/GroupView'
-import ShotEditPanel from '../../components/storyboard/ShotEditPanel'
 import ExportPromptsButton from '../../components/common/ExportPromptsButton'
 
 interface Tab2StoryboardProps {
@@ -14,7 +12,6 @@ interface Tab2StoryboardProps {
 
 export default function Tab2Storyboard({ projectId, episodeId }: Tab2StoryboardProps) {
   const [viewMode, setViewMode] = useState<'table' | 'group'>('group')
-  const [editingShotId, setEditingShotId] = useState<string | null>(null)
 
   const {
     shotsCollection,
@@ -38,23 +35,6 @@ export default function Tab2Storyboard({ projectId, episodeId }: Tab2StoryboardP
       await planShots()
     } catch (e) {
       alert(e instanceof Error ? e.message : '分镜规划失败')
-    }
-  }
-
-  const handleEditShot = (shotId: string) => {
-    setEditingShotId(shotId)
-  }
-
-  const handleCloseEditPanel = () => {
-    setEditingShotId(null)
-  }
-
-  const handleSaveShot = async (shotId: string, updates: ShotUpdatePayload) => {
-    try {
-      await editShot(shotId, updates)
-      setEditingShotId(null)
-    } catch (e) {
-      alert(e instanceof Error ? e.message : '保存失败')
     }
   }
 
@@ -111,86 +91,74 @@ export default function Tab2Storyboard({ projectId, episodeId }: Tab2StoryboardP
   }
 
   return (
-    <div className="flex h-full">
-      {/* 主内容区 */}
-      <div className="flex-1 overflow-hidden">
-        {/* 工具栏 */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-800 bg-gray-900">
-          <div className="flex items-center gap-4">
-            {/* 视图切换 */}
-            <div className="flex gap-2">
-              <button
-                onClick={() => setViewMode('table')}
-                className={`px-3 py-1 rounded ${
-                  viewMode === 'table' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'
-                }`}
-              >
-                表格视图
-              </button>
-              <button
-                onClick={() => setViewMode('group')}
-                className={`px-3 py-1 rounded ${
-                  viewMode === 'group' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'
-                }`}
-              >
-                组视图
-              </button>
-            </div>
-
-            {/* 统计信息 */}
-            <span className="text-sm text-gray-500">
-              共 {shots.length} 个镜头，{groups.length} 个组
-            </span>
-          </div>
-
-          {/* 操作按钮 */}
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* 工具栏 */}
+      <div className="flex items-center justify-between p-4 border-b border-gray-800 bg-gray-900 shrink-0">
+        <div className="flex items-center gap-4">
+          {/* 视图切换 */}
           <div className="flex gap-2">
-            <ExportPromptsButton episodeId={episodeId} />
             <button
-              onClick={refetch}
-              className="px-3 py-1 bg-gray-700 text-gray-300 rounded hover:bg-gray-600"
+              onClick={() => setViewMode('table')}
+              className={`px-3 py-1 rounded ${
+                viewMode === 'table' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'
+              }`}
             >
-              刷新
+              表格视图
             </button>
             <button
-              onClick={handlePlanShots}
-              disabled={generating}
-              className="px-3 py-1 bg-blue-600 text-white rounded disabled:bg-gray-700"
+              onClick={() => setViewMode('group')}
+              className={`px-3 py-1 rounded ${
+                viewMode === 'group' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'
+              }`}
             >
-              {generating ? '规划中...' : '重新规划'}
+              组视图
             </button>
           </div>
+
+          {/* 统计信息 */}
+          <span className="text-sm text-gray-500">
+            共 {shots.length} 个镜头，{groups.length} 个组
+          </span>
         </div>
 
-        {/* 内容区域 */}
-        <div className="flex-1 overflow-auto p-4">
-          {viewMode === 'table' ? (
-            <ShotTable
-              shots={shots}
-              groups={groups}
-              onEditShot={handleEditShot}
-            />
-          ) : (
-            <GroupView
-              shots={shots}
-              groups={groups}
-              onEditShot={handleEditShot}
-            />
-          )}
+        {/* 操作按钮 */}
+        <div className="flex gap-2">
+          <ExportPromptsButton episodeId={episodeId} />
+          <button
+            onClick={refetch}
+            className="px-3 py-1 bg-gray-700 text-gray-300 rounded hover:bg-gray-600"
+          >
+            刷新
+          </button>
+          <button
+            onClick={handlePlanShots}
+            disabled={generating}
+            className="px-3 py-1 bg-blue-600 text-white rounded disabled:bg-gray-700"
+          >
+            {generating ? '规划中...' : '重新规划'}
+          </button>
         </div>
       </div>
 
-      {/* 编辑面板（右侧） */}
-      {editingShotId && (
-        <ShotEditPanel
-          key={editingShotId}
-          shot={shots.find((s) => s.shot_id === editingShotId)!}
-          groups={groups}
-          onClose={handleCloseEditPanel}
-          onSave={handleSaveShot}
-          onChangeGroup={handleChangeGroup}
-        />
-      )}
+      {/* 内容区域 */}
+      <div className="flex-1 overflow-auto p-4">
+        {viewMode === 'table' ? (
+          <ShotTable
+            shots={shots}
+            groups={groups}
+            onEditShot={(shotId) => {
+              // table view 暂保留 onEditShot（后续可扩展行内编辑）
+              void shotId
+            }}
+          />
+        ) : (
+          <GroupView
+            shots={shots}
+            groups={groups}
+            onSave={editShot}
+          />
+        )}
+      </div>
     </div>
   )
 }
