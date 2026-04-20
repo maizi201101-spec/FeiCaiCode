@@ -1,8 +1,10 @@
 from fastapi import APIRouter, HTTPException, Depends
-from typing import List, Optional
+from typing import List, Optional, Dict, Set
 from pathlib import Path
 import json
+import aiosqlite
 
+from database import DB_PATH
 from schemas.assets_schema import (
     AssetsCollection, AssetCreate, AssetUpdate, AssetResponse,
     AssetType, ExtractRequest, Variant
@@ -239,3 +241,80 @@ async def list_episode_assets(project_id: int, episode_id: int, asset_type: Opti
                 result.append(asset_to_response(AssetType.prop, p.model_dump()))
 
     return result
+
+
+@router.get("/projects/{project_id}/assets/batch-collapse-preview")
+async def batch_collapse_preview(project_id: int):
+    """全集批量装扮坍缩预览：合并所有集的 asset_refs，返回统一坍缩结果"""
+    project_path = await get_project_path(project_id)
+    if not project_path:
+        raise HTTPException(404, "项目不存在")
+
+    # 获取项目所有集数
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        cursor = await db.execute(
+            "SELECT id, number FROM episodes WHERE project_id = ? ORDER BY number ASC",
+            (project_id,)
+        )
+        rows = await cursor.fetchall()
+
+    if not rows:
+        raise HTTPException(400, "项目无集数")
+
+    # 合并每集坍缩结果
+    char_costumes: Dict[str, Set[str]] = {}  # name -> {costume}
+    char_episodes: Dict[str, Set[str]] = {}  # name -> {EP01, EP02}
+    scene_episodes: Dict[str, Set[str]] = {}  # scene_name -> {EP01}
+    prop_episodes: Dict[str, Set[str]] = {}   # prop_name -> {EP01}
+
+    for row in rows:
+        ep_id = row["id"]
+        ep_num = row["number"]
+        ep_label = f"EP{ep_num:02d}"
+
+        try:
+            collapsed = await collapse_asset_refs_from_shots(ep_id, project_id)
+        except (ValueError, Exception):
+            continue  # 跳过无分镜的集数
+
+        for char in collapsed.get("characters", []):
+            name = char["name"]
+            if name not in char_costumes:
+                char_costumes[name] = set()
+                char_episodes[name] = set()
+            for costume in char["costumes"]:
+                char_costumes[name].add(costume)
+            char_episodes[name].add(ep_label)
+
+        for scene in collapsed.get("scenes", []):
+            sname = scene["name"]
+            if sname not in scene_episodes:
+                scene_episodes[sname] = set()
+            scene_episodes[sname].add(ep_label)
+
+        for prop in collapsed.get("props", []):
+            pname = prop["name"]
+            if pname not in prop_episodes:
+                prop_episodes[pname] = set()
+            prop_episodes[pname].add(ep_label)
+
+    return {
+        "characters": [
+            {
+                "name": name,
+                "costumes": sorted(costumes),
+                "episodes": sorted(char_episodes[name]),
+            }
+            for name, costumes in char_costumes.items()
+        ],
+        "scenes": [
+            {"name": name, "episodes": sorted(eps)}
+            for name, eps in scene_episodes.items()
+        ],
+        "props": [
+            {"name": name, "episodes": sorted(eps)}
+            for name, eps in prop_episodes.items()
+        ],
+        "episode_ids": [row["id"] for row in rows],
+    }
