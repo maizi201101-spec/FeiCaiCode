@@ -164,6 +164,17 @@ async def plan_shots_by_ai(episode_id: int) -> tuple[ShotsCollection, list[str]]
 
     script_content = script_file.read_text(encoding="utf-8")
 
+    # 读取上一集梗概（如果存在）作为前情提要
+    previous_summary = ""
+    if episode['number'] > 1:
+        prev_ep_num = episode['number'] - 1
+        prev_summary_file = Path(project_path) / "episodes" / f"EP{prev_ep_num:02d}" / "summary.txt"
+        if prev_summary_file.exists():
+            try:
+                previous_summary = prev_summary_file.read_text(encoding="utf-8").strip()
+            except Exception:
+                pass  # 读取失败时忽略
+
     # 加载装扮注册表，按集过滤（只注入本集剧本中出现的角色）
     from services.costume_registry_service import CostumeRegistryService
     registry = CostumeRegistryService.load_registry(project_path)
@@ -183,6 +194,11 @@ async def plan_shots_by_ai(episode_id: int) -> tuple[ShotsCollection, list[str]]
     storyboard_style = await get_active_preset_content(project_id, PresetCategory.STORYBOARD_STYLE)
     default_role = "你是一个专业的影视分镜规划师，负责将剧本内容拆解为结构化分镜数据。"
     system_prompt = storyboard_style if storyboard_style else default_role
+
+    # 注入前情提要（如果存在）
+    if previous_summary:
+        system_prompt += f"\n\n## 前情提要\n{previous_summary}\n\n请在分镜规划时考虑上集剧情的延续性。"
+
     system_prompt += """
 
 ## 分镜规划规则
