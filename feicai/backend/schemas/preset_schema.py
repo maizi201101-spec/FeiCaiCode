@@ -65,9 +65,10 @@ class PresetList(BaseModel):
 
 class ActivePresets(BaseModel):
     """项目激活的预设"""
-    storyboard_style: Optional[str] = None   # 激活的分镜规划风格预设ID
-    video_prompt_style: Optional[str] = None # 激活的视频提示词风格预设ID
-    image_prompt_style: Optional[str] = None # 激活的图片提示词风格预设ID
-    special_effects: List[str] = []          # 激活的特殊效果预设ID列表
-    asset_extraction: Optional[str] = None   # 激活的资产提取规则预设ID
-    video_model_spec: Optional[str] = None   # 激活的视频模型规格预设ID
+    storyboard_style: Optional[str] = None          # 激活的分镜规划风格预设ID
+    video_prompt_style: Optional[str] = None        # 激活的视频提示词风格预设ID
+    image_prompt_style: Optional[str] = None        # 激活的图片提示词风格预设ID
+    special_effects: List[str] = []                 # 激活的特殊效果预设ID列表
+    asset_extraction: Optional[str] = None          # 激活的资产提取规则预设ID
+    video_model_spec: Optional[str] = None          # 激活的视频模型规格预设ID
+    prompt_structure_rules: Optional[str] = None    # 激活的提示词结构规则预设ID

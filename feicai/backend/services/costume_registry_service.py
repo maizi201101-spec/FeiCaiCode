@@ -174,7 +174,7 @@ class CostumeRegistryService:
         return "\n".join(lines)
 
     @staticmethod
-    def to_llm_context_filtered(registry: CostumeRegistry, character_names: set) -> str:
+    def to_llm_context_filtered(registry: CostumeRegistry, character_names: set[str]) -> str:
         """
         将注册表转为简短文本格式（按集过滤），只注入本集剧本中出现的角色
 

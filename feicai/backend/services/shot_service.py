@@ -179,10 +179,8 @@ async def plan_shots_by_ai(episode_id: int) -> tuple[ShotsCollection, list[str]]
     from services.costume_registry_service import CostumeRegistryService
     registry = CostumeRegistryService.load_registry(project_path)
 
-    # 从剧本中提取角色名集合（简单正则：匹配中文姓名模式）
-    import re
-    character_names = set()
-    # 匹配模式：2-4个中文字符，后跟冒号或「」（对话标记）
+    # 从剧本中提取角色名集合（匹配 2-4 字中文姓名，后跟对话标记冒号/「）
+    character_names: set[str] = set()
     name_pattern = r'([一-龥]{2,4})(?:：|:|「)'
     for match in re.finditer(name_pattern, script_content):
         character_names.add(match.group(1))

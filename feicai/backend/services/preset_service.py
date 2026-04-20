@@ -291,6 +291,8 @@ async def activate_preset(project_id: int, preset_id: str, category: PresetCateg
         active.asset_extraction = preset_id
     elif category == PresetCategory.VIDEO_MODEL_SPEC:
         active.video_model_spec = preset_id
+    elif category == PresetCategory.PROMPT_STRUCTURE_RULES:
+        active.prompt_structure_rules = preset_id
 
     await save_active_presets(project_id, active)
 
@@ -320,6 +322,8 @@ async def deactivate_preset(project_id: int, preset_id: str) -> bool:
         active.asset_extraction = None
     if active.video_model_spec == preset_id:
         active.video_model_spec = None
+    if active.prompt_structure_rules == preset_id:
+        active.prompt_structure_rules = None
     if preset_id in active.special_effects:
         active.special_effects.remove(preset_id)
 
@@ -369,6 +373,8 @@ async def get_active_preset_content(project_id: int, category: PresetCategory) -
         preset_id = active.asset_extraction
     elif category == PresetCategory.VIDEO_MODEL_SPEC:
         preset_id = active.video_model_spec
+    elif category == PresetCategory.PROMPT_STRUCTURE_RULES:
+        preset_id = active.prompt_structure_rules
 
     if preset_id:
         for p in presets:
