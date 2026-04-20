@@ -80,13 +80,13 @@ export default function AssetVariantRow({ variant, projectId, assetType, assetId
 
   return (
     <div
-      className="ml-4 pl-3 border-l border-gray-700 py-1.5 flex gap-3 items-start group"
+      className="ml-4 pl-3 border-l border-gray-700 py-2 flex gap-3 items-start group"
       onMouseEnter={loadImages}
     >
-      {/* 左：小图占位 */}
+      {/* 左：图片（尺寸与主卡片一致）*/}
       <div
         className="shrink-0 bg-gray-900 rounded flex items-center justify-center overflow-hidden"
-        style={{ width: 48, height: 34 }}
+        style={{ width: 80, height: 56 }}
       >
         {latestImageUrl ? (
           <img src={latestImageUrl} alt={variant.variant_name} className="w-full h-full object-contain" />
@@ -97,12 +97,12 @@ export default function AssetVariantRow({ variant, projectId, assetType, assetId
 
       {/* 右：文字 */}
       <div className="flex-1 min-w-0">
-        <p className="text-xs font-medium text-gray-300 truncate">{variant.variant_name}</p>
+        <p className="text-xs font-medium text-gray-300">{variant.variant_name}</p>
         {variant.visual_diff && (
-          <p className="text-xs text-gray-500 truncate">{variant.visual_diff}</p>
+          <p className="text-xs text-gray-500">{variant.visual_diff}</p>
         )}
         {variant.trigger_condition && (
-          <p className="text-xs text-gray-600 truncate">触发：{variant.trigger_condition}</p>
+          <p className="text-xs text-gray-600">触发：{variant.trigger_condition}</p>
         )}
       </div>
 

@@ -300,9 +300,13 @@ async def extract_assets_from_storyboard(
 
     1. 从 shots.json 坍缩 asset_refs
     2. 生成 assets.json
-    3. 返回提取结果
+    3. 写入 episode_assets.json（记录本集涉及的资产 ID）
+    4. 返回提取结果
     """
+    import json
+    from pathlib import Path
     from services.asset_service import write_assets
+    from services.script_service import get_episode_info, get_project_path
 
     # 坍缩 asset_refs
     collapsed = await collapse_asset_refs_from_shots(episode_id, project_id)
@@ -312,6 +316,27 @@ async def extract_assets_from_storyboard(
 
     # 写入 assets.json
     await write_assets(project_id, assets)
+
+    # 写入 episode_assets.json（按名称反查 asset_id）
+    episode = await get_episode_info(episode_id)
+    project_path = await get_project_path(project_id)
+    if episode and project_path:
+        extracted_char_names = {c["name"] for c in collapsed.get("characters", [])}
+        extracted_scene_names = {s["name"] for s in collapsed.get("scenes", [])}
+        extracted_prop_names = {p["name"] for p in collapsed.get("props", [])}
+
+        char_ids = [c.asset_id for c in assets.characters if c.name in extracted_char_names]
+        scene_ids = [s.asset_id for s in assets.scenes if s.name in extracted_scene_names]
+        prop_ids = [p.asset_id for p in assets.props if p.name in extracted_prop_names]
+
+        ep_num = episode["number"]
+        ep_assets_dir = Path(project_path) / "episodes" / f"EP{ep_num:02d}"
+        ep_assets_dir.mkdir(parents=True, exist_ok=True)
+        ep_assets_file = ep_assets_dir / "episode_assets.json"
+        ep_assets_file.write_text(
+            json.dumps({"characters": char_ids, "scenes": scene_ids, "props": prop_ids}, ensure_ascii=False, indent=2),
+            encoding="utf-8"
+        )
 
     return {
         "status": "completed",

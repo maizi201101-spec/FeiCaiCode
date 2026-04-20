@@ -183,20 +183,20 @@ export default function AssetCard({ asset, projectId, onUpdate, onDelete, forceE
 
           {/* 右：文字 + 操作 */}
           <div className="flex-1 min-w-0 px-2 py-1.5">
-            <div className="flex items-center gap-1 mb-0.5">
+            <p className="text-sm font-medium text-white break-all">{asset.name}</p>
+            <div className="flex items-center gap-1 mt-0.5">
               <span className={`text-xs px-1.5 py-0.5 rounded shrink-0 ${TYPE_COLOR[asset.asset_type]}`}>
                 {TYPE_LABEL[asset.asset_type]}
               </span>
-              <span className="text-xs text-gray-500 truncate">{asset.asset_id}</span>
+              <span className="text-xs text-gray-500 break-all">{asset.asset_id}</span>
               {asset.needs_review && (
                 <span className="text-xs px-1 py-0.5 rounded bg-yellow-900/40 text-yellow-400 border border-yellow-700/40 shrink-0">
                   待审核
                 </span>
               )}
             </div>
-            <p className="text-sm font-medium text-white truncate">{asset.name}</p>
             {descText && !editing && (
-              <p className="text-xs text-gray-500 line-clamp-1">{descText}</p>
+              <p className="text-xs text-gray-500 mt-0.5">{descText}</p>
             )}
           </div>
 
