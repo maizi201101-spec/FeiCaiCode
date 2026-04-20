@@ -108,6 +108,30 @@ BUILTIN_PRESETS: List[Preset] = [
         created_at=datetime.now().isoformat()
     ),
 
+    # 图片提示词风格
+    Preset(
+        preset_id="builtin_image_default",
+        name="标准图片提示词",
+        category=PresetCategory.IMAGE_PROMPT_STYLE,
+        description="通用短剧图片提示词风格，写实质感、光影自然",
+        content="真实电影质感，自然光影，高清画质，人物比例准确，面部清晰，构图专业，无水印，无文字",
+        is_builtin=True,
+        is_active=False,
+        created_at=datetime.now().isoformat()
+    ),
+
+    # 资产提取规则
+    Preset(
+        preset_id="builtin_asset_extraction_default",
+        name="标准资产提取",
+        category=PresetCategory.ASSET_EXTRACTION,
+        description="默认资产提取规则，从剧本中识别角色、场景、道具并抄录原文描述",
+        content="你是短剧剧本分析助手，负责从剧本中提取角色、场景、道具的原始提及。",
+        is_builtin=True,
+        is_active=False,
+        created_at=datetime.now().isoformat()
+    ),
+
     # 视频模型规格
     Preset(
         preset_id="builtin_spec_jimeng_15s",
