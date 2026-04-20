@@ -146,10 +146,6 @@ export default function Tab2Storyboard({ projectId, episodeId }: Tab2StoryboardP
           <ShotTable
             shots={shots}
             groups={groups}
-            onEditShot={(shotId) => {
-              // table view 暂保留 onEditShot（后续可扩展行内编辑）
-              void shotId
-            }}
           />
         ) : (
           <GroupView

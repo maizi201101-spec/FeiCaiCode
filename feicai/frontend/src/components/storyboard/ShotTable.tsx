@@ -3,7 +3,7 @@ import { type Shot, type ShotGroup, getDurationColor } from '../../api/shots'
 interface ShotTableProps {
   shots: Shot[]
   groups: ShotGroup[]
-  onEditShot: (shotId: string) => void
+  onEditShot?: (shotId: string) => void
 }
 
 export default function ShotTable({ shots, groups, onEditShot }: ShotTableProps) {
@@ -45,8 +45,8 @@ export default function ShotTable({ shots, groups, onEditShot }: ShotTableProps)
           return (
             <tr
               key={shot.shot_id}
-              className="hover:bg-gray-800 cursor-pointer border-b border-gray-800"
-              onClick={() => onEditShot(shot.shot_id)}
+              className={`border-b border-gray-800 ${onEditShot ? 'hover:bg-gray-800 cursor-pointer' : ''}`}
+              onClick={() => onEditShot?.(shot.shot_id)}
             >
               <td className="border border-gray-800 px-2 py-1">{shot.shot_id}</td>
               <td className="border border-gray-800 px-2 py-1">{timeStr}</td>
@@ -72,15 +72,17 @@ export default function ShotTable({ shots, groups, onEditShot }: ShotTableProps)
                 <span className="text-gray-400">待生成</span>
               </td>
               <td className="border border-gray-800 px-2 py-1">
-                <button
-                  className="text-blue-400 hover:underline"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onEditShot(shot.shot_id)
-                  }}
-                >
-                  编辑
-                </button>
+                {onEditShot && (
+                  <button
+                    className="text-blue-400 hover:underline"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onEditShot(shot.shot_id)
+                    }}
+                  >
+                    编辑
+                  </button>
+                )}
               </td>
             </tr>
           )

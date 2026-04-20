@@ -8,6 +8,7 @@ import {
   type ShotUpdatePayload,
   getDurationColor,
 } from '../../api/shots'
+import { formatDuration } from '../../utils/format'
 
 const SHOT_TYPES: ShotType[] = ['空境', '对话', '行动冲突', '打斗', '调度']
 const SHOT_SIZES: ShotSize[] = ['大远景', '远景', '全景', '中景', '中近景', '近景', '特写']
@@ -143,7 +144,7 @@ export default function GroupView({ shots, groups, onSave }: GroupViewProps) {
                 />
                 <span className="font-medium">{group.group_id}</span>
                 <span className="text-sm text-gray-500">
-                  {(Math.round(group.total_duration * 10) / 10).toFixed(1)}s
+                  {formatDuration(group.total_duration)}s
                 </span>
                 <span className="text-sm text-gray-400">{groupShots.length} 个镜头</span>
                 <span className={`px-2 py-0.5 rounded text-xs ${
@@ -208,7 +209,7 @@ export default function GroupView({ shots, groups, onSave }: GroupViewProps) {
                             >
                               {CAMERA_MOVES.map(m => <option key={m} value={m}>{m}</option>)}
                             </select>
-                            <span className="text-xs text-gray-500 ml-auto">{(Math.round(shot.duration * 10) / 10).toFixed(1)}s</span>
+                            <span className="text-xs text-gray-500 ml-auto">{formatDuration(shot.duration)}s</span>
                           </div>
                           {/* 第二行：画面内容 textarea */}
                           <textarea
@@ -243,7 +244,7 @@ export default function GroupView({ shots, groups, onSave }: GroupViewProps) {
                             <span className="text-sm text-gray-500">{shot.shot_type}</span>
                             <span className="text-sm text-gray-500">{shot.shot_size}</span>
                             <span className="text-sm text-gray-400">
-                              {(Math.round(shot.duration * 10) / 10).toFixed(1)}s
+                              {formatDuration(shot.duration)}s
                             </span>
                           </div>
                           <div className="text-sm text-gray-400 flex-1 min-w-0 break-words whitespace-pre-wrap">
