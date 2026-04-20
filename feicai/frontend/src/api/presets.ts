@@ -52,7 +52,9 @@ export interface PresetUpdatePayload {
 export interface ActivePresets {
   storyboard_style?: string
   video_prompt_style?: string
+  image_prompt_style?: string
   special_effects: string[]
+  asset_extraction?: string
   video_model_spec?: string
 }
 

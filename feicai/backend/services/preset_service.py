@@ -258,9 +258,13 @@ async def activate_preset(project_id: int, preset_id: str, category: PresetCateg
         active.storyboard_style = preset_id
     elif category == PresetCategory.VIDEO_PROMPT_STYLE:
         active.video_prompt_style = preset_id
+    elif category == PresetCategory.IMAGE_PROMPT_STYLE:
+        active.image_prompt_style = preset_id
     elif category == PresetCategory.SPECIAL_EFFECT:
         if preset_id not in active.special_effects:
             active.special_effects.append(preset_id)
+    elif category == PresetCategory.ASSET_EXTRACTION:
+        active.asset_extraction = preset_id
     elif category == PresetCategory.VIDEO_MODEL_SPEC:
         active.video_model_spec = preset_id
 
@@ -282,9 +286,16 @@ async def deactivate_preset(project_id: int, preset_id: str) -> bool:
 
     # 从项目激活列表移除
     active = await get_active_presets(project_id)
-    for cat in [PresetCategory.STORYBOARD_STYLE, PresetCategory.VIDEO_PROMPT_STYLE, PresetCategory.VIDEO_MODEL_SPEC]:
-        if getattr(active, cat.value.replace("_spec", "").replace("storyboard_", "storyboard_").replace("video_prompt_", "video_prompt_").replace("video_model_", "video_model_")) == preset_id:
-            setattr(active, cat.value.replace("_spec", ""), None)
+    if active.storyboard_style == preset_id:
+        active.storyboard_style = None
+    if active.video_prompt_style == preset_id:
+        active.video_prompt_style = None
+    if active.image_prompt_style == preset_id:
+        active.image_prompt_style = None
+    if active.asset_extraction == preset_id:
+        active.asset_extraction = None
+    if active.video_model_spec == preset_id:
+        active.video_model_spec = None
     if preset_id in active.special_effects:
         active.special_effects.remove(preset_id)
 
@@ -328,6 +339,10 @@ async def get_active_preset_content(project_id: int, category: PresetCategory) -
         preset_id = active.storyboard_style
     elif category == PresetCategory.VIDEO_PROMPT_STYLE:
         preset_id = active.video_prompt_style
+    elif category == PresetCategory.IMAGE_PROMPT_STYLE:
+        preset_id = active.image_prompt_style
+    elif category == PresetCategory.ASSET_EXTRACTION:
+        preset_id = active.asset_extraction
     elif category == PresetCategory.VIDEO_MODEL_SPEC:
         preset_id = active.video_model_spec
 
