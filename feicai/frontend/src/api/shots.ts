@@ -125,18 +125,6 @@ export async function getShots(episodeId: number): Promise<ShotsCollection> {
   return res.json()
 }
 
-export async function updateShots(episodeId: number, collection: ShotsCollection): Promise<ShotsCollection> {
-  const res = await fetch(`${BASE}/episodes/${episodeId}/shots`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(collection),
-  })
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
-    throw new Error(err.detail || '更新分镜失败')
-  }
-  return res.json()
-}
 
 export async function updateShot(
   episodeId: number,

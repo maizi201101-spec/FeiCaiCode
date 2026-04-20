@@ -112,12 +112,6 @@ export async function detectSplitPoints(
     throw new Error(err.detail || '分集检测失败')
   }
   const data = await res.json()
-  // DEBUG: 打印返回的数据
-  console.log('[detectSplitPoints] Received:', (data.results as EpisodeSplitResult[]).slice(0, 3).map((r: EpisodeSplitResult) => ({
-    ep: r.episode_number,
-    start: r.start_position,
-    end: r.end_position,
-  })))
   return data
 }
 

@@ -71,9 +71,3 @@ export async function splitScript(
   return res.json()
 }
 
-export async function deleteScript(episodeId: number): Promise<void> {
-  const res = await fetch(`${BASE}/episodes/${episodeId}/script`, {
-    method: 'DELETE',
-  })
-  if (!res.ok) throw new Error('删除剧本失败')
-}
