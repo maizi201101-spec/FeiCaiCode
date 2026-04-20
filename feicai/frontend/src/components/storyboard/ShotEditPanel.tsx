@@ -93,11 +93,9 @@ export default function ShotEditPanel({
         shot_type: shotType,
         shot_size: shotSize,
         camera_move: cameraMove,
-        frame_action: frameAction,
         lighting: lighting || undefined,
         screen_text: screenText || undefined,
         speech: speech.length > 0 ? speech : undefined,
-        assets: assets.length > 0 ? assets : undefined,
         time_of_day: timeOfDay || undefined,
       }
       await onSave(shot.shot_id, updates)
@@ -230,16 +228,7 @@ export default function ShotEditPanel({
           </select>
         </div>
 
-        {/* 画面内容 */}
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-400">画面内容</label>
-          <textarea
-            value={frameAction}
-            onChange={(e) => setFrameAction(e.target.value)}
-            rows={3}
-            className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-gray-200 text-sm resize-none"
-          />
-        </div>
+        {/* 画面内容 - 已移除，仅在分镜列表中显示 */}
 
         {/* 光影 */}
         <div className="space-y-2">
@@ -263,17 +252,40 @@ export default function ShotEditPanel({
           />
         </div>
 
-        {/* 资产引用 */}
+        {/* 资产引用（只读展示 asset_refs） */}
         <div className="space-y-2">
           <label className="block text-sm font-medium text-gray-400">资产引用</label>
-          <input
-            type="text"
-            value={assets.join(', ')}
-            onChange={(e) => setAssets(e.target.value.split(',').map(s => s.trim()).filter(s => s))}
-            placeholder="逗号分隔的资产ID"
-            className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-gray-200 text-sm"
-          />
-          <p className="text-xs text-gray-600">如：char_001, scene_001, prop_001</p>
+          {shot.asset_refs ? (
+            <div className="space-y-1 text-sm text-gray-300">
+              {shot.asset_refs.characters && shot.asset_refs.characters.length > 0 && (
+                <div>
+                  <span className="text-gray-500">角色：</span>
+                  {shot.asset_refs.characters.map((c, i) => (
+                    <span key={i} className="mr-2">
+                      {c.name}{c.costume ? `(${c.costume})` : ''}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {shot.asset_refs.scenes && shot.asset_refs.scenes.length > 0 && (
+                <div>
+                  <span className="text-gray-500">场景：</span>
+                  {shot.asset_refs.scenes.join('、')}
+                </div>
+              )}
+              {shot.asset_refs.props && shot.asset_refs.props.length > 0 && (
+                <div>
+                  <span className="text-gray-500">道具：</span>
+                  {shot.asset_refs.props.join('、')}
+                </div>
+              )}
+              {shot.asset_refs.shot_annotations && (
+                <div className="text-gray-500 text-xs">{shot.asset_refs.shot_annotations}</div>
+              )}
+            </div>
+          ) : (
+            <div className="text-xs text-gray-600">无资产引用</div>
+          )}
         </div>
 
         {/* 场景时间氛围 */}
@@ -316,12 +328,14 @@ export default function ShotEditPanel({
                 </button>
               </div>
             ))}
-            <button
-              onClick={addSpeechLine}
-              className="w-full px-3 py-1 bg-gray-800 border border-gray-700 rounded text-sm text-gray-300 hover:bg-gray-700"
-            >
-              + 添加台词
-            </button>
+            {speech.length > 0 && (
+              <button
+                onClick={addSpeechLine}
+                className="w-full px-3 py-1 bg-gray-800 border border-gray-700 rounded text-sm text-gray-300 hover:bg-gray-700"
+              >
+                + 添加台词
+              </button>
+            )}
           </div>
         </div>
       </div>

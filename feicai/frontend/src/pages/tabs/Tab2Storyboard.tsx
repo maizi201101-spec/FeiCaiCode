@@ -13,7 +13,7 @@ interface Tab2StoryboardProps {
 }
 
 export default function Tab2Storyboard({ projectId, episodeId }: Tab2StoryboardProps) {
-  const [viewMode, setViewMode] = useState<'table' | 'group'>('table')
+  const [viewMode, setViewMode] = useState<'table' | 'group'>('group')
   const [editingShotId, setEditingShotId] = useState<string | null>(null)
 
   const {
@@ -183,6 +183,7 @@ export default function Tab2Storyboard({ projectId, episodeId }: Tab2StoryboardP
       {/* 编辑面板（右侧） */}
       {editingShotId && (
         <ShotEditPanel
+          key={editingShotId}
           shot={shots.find((s) => s.shot_id === editingShotId)!}
           groups={groups}
           onClose={handleCloseEditPanel}
