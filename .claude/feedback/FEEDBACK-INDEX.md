@@ -17,3 +17,6 @@
 - [Tab3 资产锚定声明应自动预填](tab3-asset-refs-auto-prefill.md) — 应根据 shot.asset_refs 自动预填角色+装扮+场景，减少手动操作
 - [Tab3 右侧面板高度超出视口](tab3-right-panel-height-overflow.md) — 右侧参考图/资产图区域太高，需约束在视口内
 - [Tab3 资产缩略图显示异常](tab3-asset-thumbnail-not-rendering.md) — 部分资产缩略图无法预览，显示文字但无图片
+- [Tailwind CSS 类冲突与布局约束遗漏](tailwind-css-class-conflicts.md) — block/flex 混用导致布局异常，高度约束链断裂
+- [React State 依赖与全局控制模式](react-state-dependency-patterns.md) — useEffect 依赖遗漏 + force prop 全局控制模式
+- [数据显示格式化缺失](data-display-formatting.md) — 浮点数未格式化直接渲染，需统一 toFixed 处理

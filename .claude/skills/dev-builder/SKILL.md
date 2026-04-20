@@ -84,6 +84,8 @@ description: 当 DEV-PLAN.md 就绪、用户说要开始写代码或继续开发
         - 图片展示防御：`<img>` 必须提供 `onError` fallback（占位 div 或图标）；图片 src 如来自 API，必须用 API URL helper 函数构造，不能直接用数据库里的相对路径字符串。
         - 数据关联自动预填：当数据模型中已有关联关系时（如 shot.asset_refs 已记录角色装扮），对应 UI 字段应提供一键预填按钮，减少用户重复输入。
         - Tailwind 类冲突：`block` 和 `flex` 不能同时写在同一元素上（flex 覆盖 block）；flex 子元素的 `flex-1` 要求父元素显式是 flex 容器；撑满父级宽度用 `w-full`，不要靠 `block`。
+        - 数值格式化：浮点数展示必须格式化，`{n}` 直接渲染浮点会出 0.30000000000000004 之类的异常。持续时长用 `(Math.round(n * 10) / 10).toFixed(1)` 或封装工具函数，不能裸露传给 JSX。
+        - useEffect 依赖完整性：useEffect 内部读取的所有 props 和 state 都必须出现在依赖数组里，除非有充分理由（并注释说明）。父组件通过 prop 传入控制信号时（如 `focusGroupId`），Effect 必须监听该 prop 并响应变化；不能仅在组件挂载时执行一次而忽略后续变化。
 
     [项目结构规范]
         项目代码放在以项目名命名的子文件夹里，不平铺在根目录。根目录只放规划文档、设计资源和 .claude/ 框架。

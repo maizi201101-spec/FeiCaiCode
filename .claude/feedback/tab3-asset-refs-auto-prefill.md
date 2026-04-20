@@ -3,7 +3,7 @@ type: feedback
 description: Tab3 锚定声明应根据 shot.asset_refs 自动预填角色+装扮+场景，减少手动操作
 created: 2026-04-20
 updated: 2026-04-20
-occurrences: 1
+occurrences: 2
 graduated: false
 source_skill: dev-builder
 ---
@@ -23,3 +23,4 @@ Tab3 装配与生成页面，右侧资产面板（参考图区域）的锚定声
 1. 当镜头数据中已有 asset_refs 时，应自动将关联的角色、装扮、场景预填到锚定声明区域
 2. dev-builder 在实现类似"引用关联"功能时，应优先考虑自动预填，减少用户手动操作
 3. 数据模型中已有关联关系时，UI 应利用这些关系提供智能默认值
+4. 具体实现：从 shot.asset_refs 生成 "@角色名是装扮" 格式并预填到文本框，需要一个明确的"预填"按钮触发

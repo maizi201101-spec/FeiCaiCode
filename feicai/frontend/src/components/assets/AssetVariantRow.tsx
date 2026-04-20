@@ -81,6 +81,7 @@ export default function AssetVariantRow({ variant, projectId, assetType, assetId
     : null
 
   return (
+    <>
     <div
       className="ml-4 pl-3 border-l border-gray-700 py-2 flex gap-3 items-start group"
       onMouseEnter={loadImages}
@@ -145,5 +146,6 @@ export default function AssetVariantRow({ variant, projectId, assetType, assetId
         />
       </div>
     )}
+    </>
   )
 }

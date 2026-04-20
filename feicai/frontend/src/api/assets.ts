@@ -368,6 +368,19 @@ export async function extractFromStoryboard(
   return res.json()
 }
 
+export interface BatchCollapsePreviewResult extends CollapsePreviewResult {
+  episode_ids: number[]
+}
+
+export async function batchCollapsePreview(projectId: number): Promise<BatchCollapsePreviewResult> {
+  const res = await fetch(`${BASE}/projects/${projectId}/assets/batch-collapse-preview`)
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error((err as { detail?: string }).detail || '全集批量预览失败')
+  }
+  return res.json()
+}
+
 export async function getCostumeRegistry(projectId: number): Promise<CostumeRegistry> {
   const res = await fetch(`${BASE}/projects/${projectId}/costume-registry`)
   if (!res.ok) throw new Error('获取装扮注册表失败')
