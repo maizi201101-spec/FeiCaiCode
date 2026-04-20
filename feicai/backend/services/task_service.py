@@ -222,6 +222,26 @@ async def get_pending_tasks(limit: int = 10) -> List[Dict[str, Any]]:
     ]
 
 
+async def cancel_task(task_id: int) -> bool:
+    """
+    取消任务（仅限 pending / processing 状态）
+
+    Returns:
+        True 表示已标记为 cancelled，False 表示任务不存在或已终态
+    """
+    async with aiosqlite.connect(DB_PATH) as db:
+        cursor = await db.execute(
+            """
+            UPDATE tasks
+            SET status = 'cancelled', updated_at = ?
+            WHERE id = ? AND status IN ('pending', 'processing')
+            """,
+            [datetime.now().isoformat(), task_id],
+        )
+        await db.commit()
+        return cursor.rowcount > 0
+
+
 async def delete_old_tasks(days: int = 7) -> int:
     """
     删除过期任务记录
