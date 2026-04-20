@@ -64,16 +64,16 @@ async def check_export_status(episode_id: int) -> Tuple[bool, List[str]]:
         )
         selected_groups = {row[0] for row in await cursor.fetchall()}
 
-    # 如果 group_status 没有记录，检查 video_versions.selected
-    if len(selected_groups) == 0:
-        cursor = await db.execute(
-            """
-            SELECT DISTINCT group_id FROM video_versions
-            WHERE episode_id = ? AND selected = TRUE
-            """,
-            [episode_id]
-        )
-        selected_groups = {row[0] for row in await cursor.fetchall()}
+        # 如果 group_status 没有记录，检查 video_versions.selected
+        if len(selected_groups) == 0:
+            cursor = await db.execute(
+                """
+                SELECT DISTINCT group_id FROM video_versions
+                WHERE episode_id = ? AND selected = TRUE
+                """,
+                [episode_id]
+            )
+            selected_groups = {row[0] for row in await cursor.fetchall()}
 
     missing_groups = list(group_ids - selected_groups)
     ready = len(missing_groups) == 0
