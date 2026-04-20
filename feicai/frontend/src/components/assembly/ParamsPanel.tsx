@@ -1,5 +1,6 @@
 import { type GlobalSettings } from '../../api/prompts'
-import { type Asset } from '../../api/assets'
+import { type Asset, getImageUrl } from '../../api/assets'
+import { type ShotGroup } from '../../api/shots'
 
 interface GroupedAssets {
   characters: Asset[]
@@ -8,33 +9,58 @@ interface GroupedAssets {
 }
 
 interface ParamsPanelProps {
+  projectId: number
   settings: GlobalSettings | null
   referenceImages: string[]
   onSetReferenceImages: (images: string[]) => void
   globalPrompt: string
   finalVideoPrompt: string
   currentShotId: string | null
+  currentGroup: ShotGroup | null
   groupedAssets: GroupedAssets
   onGenerateVideo?: () => void
   videoGenerating?: boolean
 }
 
 export default function ParamsPanel({
+  projectId,
   settings,
   referenceImages,
   onSetReferenceImages,
   globalPrompt,
   finalVideoPrompt,
   currentShotId,
+  currentGroup,
   groupedAssets,
   onGenerateVideo,
   videoGenerating = false,
 }: ParamsPanelProps) {
-  // 按顺序合并资产图（人物→场景→道具）
+  // Build asset image list using proper API URLs (not raw filesystem paths)
   const allAssetImages = [
-    ...groupedAssets.characters.map((a) => ({ asset_id: a.asset_id, name: a.name, type: '人物', image: a.images?.[0] || null })),
-    ...groupedAssets.scenes.map((a) => ({ asset_id: a.asset_id, name: a.name, type: '场景', image: a.images?.[0] || null })),
-    ...groupedAssets.props.map((a) => ({ asset_id: a.asset_id, name: a.name, type: '道具', image: a.images?.[0] || null })),
+    ...groupedAssets.characters.map((a) => ({
+      asset_id: a.asset_id,
+      name: a.name,
+      type: '人物' as const,
+      asset_type: a.asset_type,
+      hasImage: a.images.length > 0,
+      imageUrl: a.images.length > 0 ? getImageUrl(projectId, a.asset_type, a.asset_id, 1) : null,
+    })),
+    ...groupedAssets.scenes.map((a) => ({
+      asset_id: a.asset_id,
+      name: a.name,
+      type: '场景' as const,
+      asset_type: a.asset_type,
+      hasImage: a.images.length > 0,
+      imageUrl: a.images.length > 0 ? getImageUrl(projectId, a.asset_type, a.asset_id, 1) : null,
+    })),
+    ...groupedAssets.props.map((a) => ({
+      asset_id: a.asset_id,
+      name: a.name,
+      type: '道具' as const,
+      asset_type: a.asset_type,
+      hasImage: a.images.length > 0,
+      imageUrl: a.images.length > 0 ? getImageUrl(projectId, a.asset_type, a.asset_id, 1) : null,
+    })),
   ]
 
   // 生成锚定声明（按人物→场景→道具顺序）
@@ -42,7 +68,7 @@ export default function ParamsPanel({
     if (referenceImages.length === 0) return ''
     return referenceImages
       .map((img, i) => {
-        const asset = allAssetImages.find((a) => a.image === img)
+        const asset = allAssetImages.find((a) => a.imageUrl === img)
         return asset ? `图${i + 1}是${asset.name}` : null
       })
       .filter(Boolean)
@@ -52,15 +78,15 @@ export default function ParamsPanel({
   const anchorDeclaration = generateAnchorDeclaration()
 
   // 选择/取消选择参考图（保持类型顺序）
-  const toggleReferenceImage = (image: string) => {
-    if (referenceImages.includes(image)) {
-      onSetReferenceImages(referenceImages.filter((img) => img !== image))
+  const toggleReferenceImage = (imageUrl: string) => {
+    if (referenceImages.includes(imageUrl)) {
+      onSetReferenceImages(referenceImages.filter((img) => img !== imageUrl))
     } else if (referenceImages.length < 6) {
-      const newImages = [...referenceImages, image]
+      const newImages = [...referenceImages, imageUrl]
       // 按类型排序：人物→场景→道具
       const sorted = newImages.sort((a, b) => {
-        const assetA = allAssetImages.find((x) => x.image === a)
-        const assetB = allAssetImages.find((x) => x.image === b)
+        const assetA = allAssetImages.find((x) => x.imageUrl === a)
+        const assetB = allAssetImages.find((x) => x.imageUrl === b)
         if (!assetA || !assetB) return 0
         const typeOrder: Record<string, number> = { '人物': 0, '场景': 1, '道具': 2 }
         return typeOrder[assetA.type] - typeOrder[assetB.type]
@@ -86,6 +112,19 @@ export default function ParamsPanel({
 
   return (
     <div className="flex flex-col h-full overflow-auto">
+      {/* 当前组信息 */}
+      {currentGroup && (
+        <div className="p-2 border-b border-gray-800 text-xs text-gray-400 space-y-0.5">
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-gray-300">{currentGroup.group_id}</span>
+            <span>时长: {currentGroup.total_duration.toFixed(1)}s</span>
+          </div>
+          {currentGroup.scene_context && (
+            <div className="text-gray-500">{currentGroup.scene_context}</div>
+          )}
+        </div>
+      )}
+
       {/* 模型选择 */}
       <div className="p-2 border-b border-gray-800">
         <label className="text-sm font-medium">生成模型</label>
@@ -98,18 +137,18 @@ export default function ParamsPanel({
       {/* 参考图选择 */}
       <div className="p-2 border-b border-gray-800">
         <label className="text-sm font-medium">参考图 ({referenceImages.length}/6)</label>
-        <div className="mt-1 grid grid-cols-3 gap-1">
-          {allAssetImages.slice(0, 18).map((asset) => (
+        <div className="mt-1 grid grid-cols-4 gap-1">
+          {allAssetImages.slice(0, 24).map((asset) => (
             <button
               key={asset.asset_id}
-              onClick={() => asset.image && toggleReferenceImage(asset.image)}
-              disabled={!asset.image}
+              onClick={() => asset.imageUrl && toggleReferenceImage(asset.imageUrl)}
+              disabled={!asset.hasImage}
               className={`aspect-square rounded overflow-hidden border-2 transition-colors ${
-                referenceImages.includes(asset.image || '') ? 'border-blue-500 bg-blue-900/30' : 'border-transparent hover:border-gray-600'
-              } ${!asset.image ? 'opacity-50 cursor-not-allowed' : ''}`}
+                referenceImages.includes(asset.imageUrl || '') ? 'border-blue-500 bg-blue-900/30' : 'border-transparent hover:border-gray-600'
+              } ${!asset.hasImage ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
-              {asset.image ? (
-                <img src={asset.image} alt={asset.name} className="w-full h-full object-cover" />
+              {asset.imageUrl ? (
+                <img src={asset.imageUrl} alt={asset.name} className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full bg-gray-700 flex items-center justify-center text-xs text-gray-400">{asset.name.slice(0, 2)}</div>
               )}
@@ -123,7 +162,7 @@ export default function ParamsPanel({
             <div className="text-xs text-gray-500 mb-1">拖拽调整顺序（人物→场景→道具）</div>
             <div className="flex flex-wrap gap-1">
               {referenceImages.map((img, i) => {
-                const asset = allAssetImages.find((a) => a.image === img)
+                const asset = allAssetImages.find((a) => a.imageUrl === img)
                 return (
                   <div
                     key={img}
@@ -131,10 +170,10 @@ export default function ParamsPanel({
                     onDragStart={(e) => handleDragStart(e, i)}
                     onDragOver={(e) => e.preventDefault()}
                     onDrop={(e) => handleDrop(e, i)}
-                    className="relative w-10 h-10 rounded overflow-hidden border cursor-move hover:border-blue-400"
+                    className="relative w-8 h-8 rounded overflow-hidden border cursor-move hover:border-blue-400"
                   >
                     <img src={img} alt="" className="w-full h-full object-cover" />
-                    <span className="absolute bottom-0 right-0 bg-black/50 text-white text-xs px-1">{i + 1}</span>
+                    <span className="absolute bottom-0 right-0 bg-black/50 text-white text-xs px-0.5">{i + 1}</span>
                     <span className="absolute top-0 left-0 bg-black/50 text-white text-xs px-0.5 rounded-br">{asset?.type?.slice(0, 1)}</span>
                   </div>
                 )

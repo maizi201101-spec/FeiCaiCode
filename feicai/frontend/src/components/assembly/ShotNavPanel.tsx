@@ -6,7 +6,9 @@ interface ShotNavPanelProps {
   shots: Shot[]
   prompts: Prompt[]
   currentShotId: string | null
+  currentGroupId: string | null
   onSelectShot: (shotId: string, groupId: string) => void
+  onSelectGroup: (groupId: string) => void
   // Tab4 返修状态
   revisionShotIds?: string[]
   // Tab4 跳转定位
@@ -60,7 +62,9 @@ export default function ShotNavPanel({
   shots,
   prompts,
   currentShotId,
+  currentGroupId,
   onSelectShot,
+  onSelectGroup,
   revisionShotIds = [],
   focusGroupId = null,
   onFocusHandled,
@@ -150,22 +154,25 @@ export default function ShotNavPanel({
 
           return (
             <div key={groupId} className="border-b border-gray-800">
-              {/* 组标题（可折叠） */}
-              <button
-                onClick={() => toggleGroup(groupId)}
-                className={`w-full px-2 py-1 font-medium text-sm flex items-center gap-2
-                  ${hasRevision ? 'bg-red-950/50' : allConfirmed ? 'bg-green-950/50' : 'bg-gray-800'}
+              {/* 组标题：点击选择组，箭头切换折叠 */}
+              <div
+                className={`w-full px-2 py-1.5 font-medium text-sm flex items-center gap-2 cursor-pointer
+                  ${hasRevision ? 'bg-red-950/50' : allConfirmed ? 'bg-green-950/50' : currentGroupId === groupId ? 'bg-blue-900/40 border-l-2 border-blue-500' : 'bg-gray-800'}
                 `}
+                onClick={() => onSelectGroup(groupId)}
               >
-                {/* 折叠图标 */}
-                <span className="text-gray-400">
+                {/* 折叠图标（单独点击阻止冒泡） */}
+                <span
+                  className="text-gray-400 hover:text-gray-200 px-0.5"
+                  onClick={(e) => { e.stopPropagation(); toggleGroup(groupId) }}
+                >
                   {isExpanded ? '▼' : '▶'}
                 </span>
                 <span className="text-gray-300">{groupId}</span>
                 <span className="text-xs text-gray-400">
                   ({groupShots.length} 镜头)
                 </span>
-              </button>
+              </div>
 
               {/* 镜头列表（折叠时隐藏） */}
               {isExpanded && groupShots.map((shot) => {

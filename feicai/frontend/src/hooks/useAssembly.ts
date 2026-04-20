@@ -75,6 +75,12 @@ export function useAssembly(
     setCurrentGroupId(null)
   }, [])
 
+  // 选择组时清空镜头选择，只保留组
+  const selectGroup = useCallback((groupId: string) => {
+    setCurrentGroupId(groupId)
+    setCurrentShotId(null)
+  }, [])
+
   // 选择镜头时同步更新 group
   const selectShot = useCallback((shotId: string, groupId: string) => {
     setCurrentShotId(shotId)
@@ -94,6 +100,7 @@ export function useAssembly(
     setCurrentGroupId,
     setMode,
     selectShot,
+    selectGroup,
     clearSelection,
 
     // 特殊提示词

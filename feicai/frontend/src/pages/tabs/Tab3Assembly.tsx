@@ -85,6 +85,11 @@ export default function Tab3Assembly({ episodeId, projectId, revisionShotIds = [
   // Current data
   const currentPrompt = prompts.find(p => p.shot_id === assembly.currentShotId)
   const currentShot = shotsCollection?.shots.find(s => s.shot_id === assembly.currentShotId)
+  const groups = shotsCollection?.groups || []
+  const currentGroup = groups.find(g => g.group_id === assembly.currentGroupId) || null
+  const currentGroupShots = currentGroup
+    ? shotsCollection!.shots.filter(s => currentGroup.shots.includes(s.shot_id))
+    : []
   const finalVideoPrompt = assembly.currentShotId ? assembly.getFinalVideoPrompt(assembly.currentShotId) : ''
   const anchorDeclaration = assembly.referenceImages.map((img, i) => {
     const asset = allAssets.find(a => a.images?.[0] === img)
@@ -115,7 +120,9 @@ export default function Tab3Assembly({ episodeId, projectId, revisionShotIds = [
           shots={shotsCollection?.shots || []}
           prompts={prompts}
           currentShotId={assembly.currentShotId}
+          currentGroupId={assembly.currentGroupId}
           onSelectShot={assembly.selectShot}
+          onSelectGroup={assembly.selectGroup}
           revisionShotIds={revisionShotIds}
           focusGroupId={focusGroupId}
           onFocusHandled={onFocusHandled}
@@ -136,6 +143,9 @@ export default function Tab3Assembly({ episodeId, projectId, revisionShotIds = [
           onAddSpecial={assembly.addSpecialPrompt}
           onRemoveSpecial={assembly.removeSpecialPrompt}
           currentGroupId={assembly.currentGroupId}
+          currentGroupShots={currentGroupShots}
+          currentGroup={currentGroup}
+          allPrompts={prompts}
           shotIds={shotsCollection?.shots.map(s => s.shot_id) || []}
           videoVersions={videoGen.versions}
           currentVersionId={videoGen.currentVersionId}
@@ -147,12 +157,14 @@ export default function Tab3Assembly({ episodeId, projectId, revisionShotIds = [
       </div>
       <div className="w-[30%] min-w-[280px] border border-gray-800 rounded bg-gray-900 overflow-hidden">
         <ParamsPanel
+          projectId={projectId}
           settings={settings}
           referenceImages={assembly.referenceImages}
           onSetReferenceImages={assembly.setReferenceImages}
           globalPrompt={globalPrompt}
           finalVideoPrompt={finalVideoPrompt}
           currentShotId={assembly.currentShotId}
+          currentGroup={currentGroup}
           groupedAssets={groupedAssets}
           onGenerateVideo={handleGenerateVideo}
           videoGenerating={videoGen.generating}

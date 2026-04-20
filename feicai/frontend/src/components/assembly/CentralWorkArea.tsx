@@ -1,5 +1,5 @@
 import { useRef } from 'react'
-import { type Shot } from '../../api/shots'
+import { type Shot, type ShotGroup } from '../../api/shots'
 import { type Prompt, type SpecialPrompt } from '../../api/prompts'
 import { type Asset, getImageUrl } from '../../api/assets'
 import { type VideoVersion } from '../../api/videos'
@@ -25,6 +25,9 @@ interface CentralWorkAreaProps {
   onAddSpecial: (content: string, scope: SpecialPrompt['scope'], targetIds: string[]) => void
   onRemoveSpecial: (id: string) => void
   currentGroupId: string | null
+  currentGroupShots: Shot[]
+  currentGroup: ShotGroup | null
+  allPrompts: Prompt[]
   shotIds: string[]
   videoVersions?: VideoVersion[]
   currentVersionId?: number | null | undefined
@@ -48,6 +51,9 @@ export default function CentralWorkArea({
   onAddSpecial,
   onRemoveSpecial,
   currentGroupId,
+  currentGroupShots,
+  currentGroup,
+  allPrompts,
   shotIds,
   videoVersions = [],
   currentVersionId,
@@ -59,10 +65,55 @@ export default function CentralWorkArea({
   const scopeRef = useRef<HTMLSelectElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  if (!currentShot) {
+  if (!currentShot && !currentGroupId) {
     return (
       <div className="flex-1 flex items-center justify-center text-gray-400">
-        请从左侧选择一个镜头
+        请从左侧选择一个组或镜头
+      </div>
+    )
+  }
+
+  // 如果选了组但没选具体镜头，显示组概览（所有镜头提示词）
+  if (!currentShot && currentGroupId) {
+    return (
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex items-center gap-2 p-2 border-b border-gray-800 bg-gray-900">
+          <span className="font-mono text-sm text-gray-300">{currentGroupId}</span>
+          {currentGroup && (
+            <span className="text-xs text-gray-500">
+              {currentGroup.total_duration.toFixed(1)}s · {currentGroupShots.length} 镜头
+              {currentGroup.scene_context && ` · ${currentGroup.scene_context}`}
+            </span>
+          )}
+        </div>
+        <div className="flex-1 overflow-y-auto p-3 space-y-3">
+          {currentGroupShots.map((shot) => {
+            const prompt = allPrompts.find(p => p.shot_id === shot.shot_id)
+            return (
+              <div key={shot.shot_id} className="bg-gray-800 rounded p-2 space-y-1">
+                <div className="flex items-center gap-2 text-xs text-gray-400">
+                  <span className="font-mono text-gray-300">{shot.shot_id}</span>
+                  <span>{shot.shot_size} / {shot.camera_move}</span>
+                  <span>{shot.duration.toFixed(1)}s</span>
+                  {prompt?.confirmed && <span className="text-green-400">✓</span>}
+                </div>
+                {prompt?.image_prompt && (
+                  <div className="text-xs text-gray-300 bg-gray-900 rounded px-2 py-1">
+                    <span className="text-gray-500 mr-1">图:</span>{prompt.image_prompt}
+                  </div>
+                )}
+                {prompt?.video_prompt && (
+                  <div className="text-xs text-gray-400 bg-gray-900 rounded px-2 py-1">
+                    <span className="text-gray-500 mr-1">视:</span>{prompt.video_prompt}
+                  </div>
+                )}
+                {!prompt && (
+                  <div className="text-xs text-gray-600">未生成提示词</div>
+                )}
+              </div>
+            )
+          })}
+        </div>
       </div>
     )
   }
