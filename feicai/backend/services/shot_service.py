@@ -328,27 +328,10 @@ async def update_shot_field(episode_id: int, shot_id: str, updates: ShotUpdate) 
     if shot_index is None:
         return None
 
-    # 应用更新
+    # 应用更新（model_copy 保留所有未修改字段，包括 asset_refs / asset_bindings）
     current_shot = collection.shots[shot_index]
     update_data = updates.model_dump(exclude_none=True)
-
-    updated_shot = Shot(
-        shot_id=current_shot.shot_id,
-        group_id=current_shot.group_id,
-        scene_id=current_shot.scene_id,
-        time_range=current_shot.time_range,
-        duration=current_shot.duration,
-        shot_type=update_data.get("shot_type", current_shot.shot_type),
-        shot_size=update_data.get("shot_size", current_shot.shot_size),
-        camera_move=update_data.get("camera_move", current_shot.camera_move),
-        assets=update_data.get("assets", current_shot.assets),
-        asset_refs=current_shot.asset_refs,
-        frame_action=update_data.get("frame_action", current_shot.frame_action),
-        lighting=update_data.get("lighting", current_shot.lighting),
-        screen_text=update_data.get("screen_text", current_shot.screen_text),
-        speech=update_data.get("speech", current_shot.speech),
-        time_of_day=update_data.get("time_of_day", current_shot.time_of_day),
-    )
+    updated_shot = current_shot.model_copy(update=update_data)
 
     collection.shots[shot_index] = updated_shot
     await write_shots(episode_id, collection)
@@ -372,25 +355,9 @@ async def update_shot_group_membership(episode_id: int, shot_id: str, new_group_
     if shot_index is None:
         return None
 
-    # 更新镜头的 group_id
+    # 更新镜头的 group_id（model_copy 保留所有其他字段，包括 asset_refs / asset_bindings）
     current_shot = collection.shots[shot_index]
-    updated_shot = Shot(
-        shot_id=current_shot.shot_id,
-        group_id=new_group_id,
-        scene_id=current_shot.scene_id,
-        time_range=current_shot.time_range,
-        duration=current_shot.duration,
-        shot_type=current_shot.shot_type,
-        shot_size=current_shot.shot_size,
-        camera_move=current_shot.camera_move,
-        assets=current_shot.assets,
-        asset_refs=current_shot.asset_refs,
-        frame_action=current_shot.frame_action,
-        lighting=current_shot.lighting,
-        screen_text=current_shot.screen_text,
-        speech=current_shot.speech,
-        time_of_day=current_shot.time_of_day,
-    )
+    updated_shot = current_shot.model_copy(update={"group_id": new_group_id})
     collection.shots[shot_index] = updated_shot
 
     # 更新旧组的 shots 列表
