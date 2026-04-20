@@ -101,7 +101,7 @@ export default function Tab3Assembly({ episodeId, projectId, revisionShotIds = [
   )
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col overflow-hidden">
       {/* 顶部工具栏 */}
       <div className="flex items-center justify-between px-2 py-1 border-b border-gray-800 bg-gray-900">
         <div className="text-sm text-gray-400">
@@ -109,7 +109,7 @@ export default function Tab3Assembly({ episodeId, projectId, revisionShotIds = [
         </div>
         <ExportPromptsButton episodeId={episodeId} projectId={projectId} />
       </div>
-      <div className="flex h-full gap-2 p-2">
+      <div className="flex flex-1 min-h-0 gap-2 p-2">
       <div className="w-[15%] min-w-[180px] border border-gray-800 rounded bg-gray-900 overflow-hidden">
         <ShotNavPanel
           shots={shotsCollection?.shots || []}
@@ -129,6 +129,7 @@ export default function Tab3Assembly({ episodeId, projectId, revisionShotIds = [
           currentPrompt={currentPrompt}
           allAssets={allAssets}
           groupedAssets={groupedAssets}
+          projectId={projectId}
           onEditPrompt={handleEditPrompt}
           onConfirm={handleConfirmPrompt}
           specialPrompts={assembly.specialPrompts}

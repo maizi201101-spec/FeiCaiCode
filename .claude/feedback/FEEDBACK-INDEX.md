@@ -13,3 +13,7 @@
 - [资产提取架构理解错误](asset-extraction-architecture-misunderstanding.md) — 逐集提取应为每集独立 LLM 调用+程序预筛选，非批量提交
 - [多分支 continue 导致数据丢失](data-loss-from-continue-in-branch.md) — new_variant 分支 continue 跳过后变体数据完全丢失（HIGH）
 - [改版时未清理旧代码](leftover-old-code-cleanup.md) — 重写逻辑后遗留旧代码死代码，需每次主动清理
+- [资产卡片审核按钮位置不合理](asset-card-review-button-placement.md) — 高频操作按钮不应藏在展开区，应放到 hover 操作列
+- [Tab3 资产锚定声明应自动预填](tab3-asset-refs-auto-prefill.md) — 应根据 shot.asset_refs 自动预填角色+装扮+场景，减少手动操作
+- [Tab3 右侧面板高度超出视口](tab3-right-panel-height-overflow.md) — 右侧参考图/资产图区域太高，需约束在视口内
+- [Tab3 资产缩略图显示异常](tab3-asset-thumbnail-not-rendering.md) — 部分资产缩略图无法预览，显示文字但无图片

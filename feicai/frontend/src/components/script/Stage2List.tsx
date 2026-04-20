@@ -41,7 +41,7 @@ export default function Stage2List({
           <div className="px-4 py-2 bg-gray-800 border-b border-gray-700 text-sm font-medium text-gray-300">
             分集列表
           </div>
-          <div className="overflow-y-auto max-h-[400px]">
+          <div className="overflow-y-auto flex-1 min-h-0 h-full">
             {episodes.length === 0 ? (
               <div className="p-4 text-gray-400 text-center">暂无分集数据</div>
             ) : (

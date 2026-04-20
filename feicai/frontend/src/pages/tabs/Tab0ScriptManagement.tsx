@@ -11,9 +11,10 @@ import { type EpisodeSplitResult, type ScriptType, regenerateAllSummaries } from
 interface Tab0ScriptManagementProps {
   projectId: number
   onGoToTab1: () => void
+  onSplitConfirmed?: () => void
 }
 
-export default function Tab0ScriptManagement({ projectId, onGoToTab1 }: Tab0ScriptManagementProps) {
+export default function Tab0ScriptManagement({ projectId, onGoToTab1, onSplitConfirmed }: Tab0ScriptManagementProps) {
   const {
     stage,
     setStage,
@@ -45,6 +46,7 @@ export default function Tab0ScriptManagement({ projectId, onGoToTab1 }: Tab0Scri
     const result = await handleConfirmSplit(detectionResult.results as EpisodeSplitResult[])
     if (result?.success) {
       clear()
+      onSplitConfirmed?.()
     }
   }
 
@@ -85,7 +87,7 @@ export default function Tab0ScriptManagement({ projectId, onGoToTab1 }: Tab0Scri
       </div>
 
       {/* 主内容区 */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-hidden min-h-0">
         {stage === 'stage1' ? (
           <Stage1Import
             detectionResult={detectionResult ? {

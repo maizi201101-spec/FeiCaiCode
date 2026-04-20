@@ -131,30 +131,30 @@ export default function ShotEditPanel({
   }
 
   return (
-    <div className="w-80 border-l bg-white overflow-auto">
+    <div className="w-80 border-l border-gray-700 bg-gray-900 flex flex-col max-h-screen overflow-hidden">
       {/* 头部 */}
-      <div className="flex items-center justify-between p-4 border-b">
-        <span className="font-medium">编辑镜头 {shot.shot_id}</span>
-        <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700 shrink-0">
+        <span className="font-medium text-gray-200">编辑镜头 {shot.shot_id}</span>
+        <button onClick={onClose} className="text-gray-500 hover:text-gray-300">
           ✕
         </button>
       </div>
 
-      {/* 内容 */}
-      <div className="p-4 space-y-4">
+      {/* 内容（可滚动） */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {/* 基本信息（只读） */}
         <div className="space-y-2 text-sm">
           <div className="flex justify-between">
             <span className="text-gray-500">编号</span>
-            <span>{shot.shot_id}</span>
+            <span className="text-gray-300">{shot.shot_id}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-500">时长</span>
-            <span>{shot.duration.toFixed(1)}s</span>
+            <span className="text-gray-300">{shot.duration.toFixed(1)}s</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-500">时段</span>
-            <span>
+            <span className="text-gray-300">
               {shot.time_range.start_sec.toFixed(1)}-{shot.time_range.end_sec.toFixed(1)}s
             </span>
           </div>
@@ -162,11 +162,11 @@ export default function ShotEditPanel({
 
         {/* 组归属 */}
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">组归属</label>
+          <label className="block text-sm font-medium text-gray-400">组归属</label>
           <select
             value={groupId}
             onChange={(e) => handleGroupIdChange(e.target.value)}
-            className="w-full border rounded px-2 py-1"
+            className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-gray-200 text-sm"
           >
             {groups.map((g) => (
               <option key={g.group_id} value={g.group_id}>
@@ -178,23 +178,23 @@ export default function ShotEditPanel({
             <button
               onClick={handleGroupChange}
               disabled={saving}
-              className="w-full px-3 py-1 bg-yellow-500 text-white rounded text-sm disabled:bg-gray-300"
+              className="w-full px-3 py-1 bg-yellow-600 text-white rounded text-sm disabled:bg-gray-700 hover:bg-yellow-500"
             >
               {saving ? '调整中...' : '调整归组'}
             </button>
           )}
           {groupWarning && (
-            <p className="text-xs text-red-500 mt-1">{groupWarning}</p>
+            <p className="text-xs text-red-400 mt-1">{groupWarning}</p>
           )}
         </div>
 
         {/* 镜头类型 */}
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">镜头类型</label>
+          <label className="block text-sm font-medium text-gray-400">镜头类型</label>
           <select
             value={shotType}
             onChange={(e) => setShotType(e.target.value as ShotType)}
-            className="w-full border rounded px-2 py-1"
+            className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-gray-200 text-sm"
           >
             {SHOT_TYPES.map((t) => (
               <option key={t} value={t}>{t}</option>
@@ -204,11 +204,11 @@ export default function ShotEditPanel({
 
         {/* 景别 */}
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">景别</label>
+          <label className="block text-sm font-medium text-gray-400">景别</label>
           <select
             value={shotSize}
             onChange={(e) => setShotSize(e.target.value as ShotSize)}
-            className="w-full border rounded px-2 py-1"
+            className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-gray-200 text-sm"
           >
             {SHOT_SIZES.map((s) => (
               <option key={s} value={s}>{s}</option>
@@ -218,11 +218,11 @@ export default function ShotEditPanel({
 
         {/* 运镜 */}
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">运镜</label>
+          <label className="block text-sm font-medium text-gray-400">运镜</label>
           <select
             value={cameraMove}
             onChange={(e) => setCameraMove(e.target.value as CameraMove)}
-            className="w-full border rounded px-2 py-1"
+            className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-gray-200 text-sm"
           >
             {CAMERA_MOVES.map((m) => (
               <option key={m} value={m}>{m}</option>
@@ -232,65 +232,65 @@ export default function ShotEditPanel({
 
         {/* 画面内容 */}
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">画面内容</label>
+          <label className="block text-sm font-medium text-gray-400">画面内容</label>
           <textarea
             value={frameAction}
             onChange={(e) => setFrameAction(e.target.value)}
             rows={3}
-            className="w-full border rounded px-2 py-1"
+            className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-gray-200 text-sm resize-none"
           />
         </div>
 
         {/* 光影 */}
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">光影</label>
+          <label className="block text-sm font-medium text-gray-400">光影</label>
           <input
             type="text"
             value={lighting}
             onChange={(e) => setLighting(e.target.value)}
-            className="w-full border rounded px-2 py-1"
+            className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-gray-200 text-sm"
           />
         </div>
 
         {/* 画面内文字 */}
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">画面内文字</label>
+          <label className="block text-sm font-medium text-gray-400">画面内文字</label>
           <input
             type="text"
             value={screenText}
             onChange={(e) => setScreenText(e.target.value)}
-            className="w-full border rounded px-2 py-1"
+            className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-gray-200 text-sm"
           />
         </div>
 
         {/* 资产引用 */}
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">资产引用</label>
+          <label className="block text-sm font-medium text-gray-400">资产引用</label>
           <input
             type="text"
             value={assets.join(', ')}
             onChange={(e) => setAssets(e.target.value.split(',').map(s => s.trim()).filter(s => s))}
             placeholder="逗号分隔的资产ID"
-            className="w-full border rounded px-2 py-1"
+            className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-gray-200 text-sm"
           />
-          <p className="text-xs text-gray-400">如：char_001, scene_001, prop_001</p>
+          <p className="text-xs text-gray-600">如：char_001, scene_001, prop_001</p>
         </div>
 
         {/* 场景时间氛围 */}
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">场景时间氛围</label>
+          <label className="block text-sm font-medium text-gray-400">场景时间氛围</label>
           <input
             type="text"
             value={timeOfDay}
             onChange={(e) => setTimeOfDay(e.target.value)}
             placeholder="如：白天、夜晚、黄昏"
-            className="w-full border rounded px-2 py-1"
+            className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-gray-200 text-sm"
           />
         </div>
 
         {/* 台词 */}
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">台词</label>
+          <label className="block text-sm font-medium text-gray-400">台词</label>
           <div className="space-y-2">
             {speech.map((s, index) => (
               <div key={index} className="flex gap-2">
@@ -299,18 +299,18 @@ export default function ShotEditPanel({
                   value={s.speaker}
                   onChange={(e) => updateSpeechLine(index, 'speaker', e.target.value)}
                   placeholder="说话人"
-                  className="flex-1 border rounded px-2 py-1 text-sm"
+                  className="flex-1 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-gray-200 text-sm"
                 />
                 <input
                   type="text"
                   value={s.text}
                   onChange={(e) => updateSpeechLine(index, 'text', e.target.value)}
                   placeholder="台词内容"
-                  className="flex-1 border rounded px-2 py-1 text-sm"
+                  className="flex-1 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-gray-200 text-sm"
                 />
                 <button
                   onClick={() => removeSpeechLine(index)}
-                  className="text-red-500 hover:text-red-700"
+                  className="text-red-500 hover:text-red-400"
                 >
                   ✕
                 </button>
@@ -318,18 +318,20 @@ export default function ShotEditPanel({
             ))}
             <button
               onClick={addSpeechLine}
-              className="w-full px-3 py-1 bg-gray-100 rounded text-sm hover:bg-gray-200"
+              className="w-full px-3 py-1 bg-gray-800 border border-gray-700 rounded text-sm text-gray-300 hover:bg-gray-700"
             >
               + 添加台词
             </button>
           </div>
         </div>
+      </div>
 
-        {/* 保存按钮 */}
+      {/* 保存按钮（固定底部） */}
+      <div className="shrink-0 px-4 py-3 border-t border-gray-700">
         <button
           onClick={handleSave}
           disabled={saving}
-          className="w-full px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300"
+          className="w-full px-4 py-2 bg-indigo-600 text-white rounded disabled:bg-gray-700 hover:bg-indigo-500"
         >
           {saving ? '保存中...' : '保存'}
         </button>

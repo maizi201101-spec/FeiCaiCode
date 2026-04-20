@@ -1,7 +1,7 @@
 import { useRef } from 'react'
 import { type Shot } from '../../api/shots'
 import { type Prompt, type SpecialPrompt } from '../../api/prompts'
-import { type Asset } from '../../api/assets'
+import { type Asset, getImageUrl } from '../../api/assets'
 import { type VideoVersion } from '../../api/videos'
 import VideoVersionTabs from './VideoVersionTabs'
 
@@ -18,6 +18,7 @@ interface CentralWorkAreaProps {
   currentPrompt: Prompt | undefined
   allAssets: Asset[]
   groupedAssets: GroupedAssets
+  projectId: number
   onEditPrompt: (shotId: string, imagePrompt?: string, videoPrompt?: string) => void
   onConfirm: (shotId: string) => void
   specialPrompts: SpecialPrompt[]
@@ -40,6 +41,7 @@ export default function CentralWorkArea({
   currentPrompt,
   allAssets,
   groupedAssets,
+  projectId,
   onEditPrompt,
   onConfirm,
   specialPrompts,
@@ -69,6 +71,32 @@ export default function CentralWorkArea({
   const referencedAssetIds = currentShot.assets || []
   // 判断是否被引用（使用 referencedAssetIds）
   const isReferenced = (assetId: string) => referencedAssetIds.includes(assetId)
+
+  // 生成 asset_refs 锚定声明行
+  const buildAnchorLine = (): string => {
+    const refs = currentShot.asset_refs
+    if (!refs) return ''
+    const parts: string[] = []
+    for (const c of refs.characters) {
+      parts.push(`@${c.name}是${c.costume || c.name}`)
+    }
+    for (const s of refs.scenes) {
+      parts.push(`@${s}`)
+    }
+    for (const p of refs.props) {
+      parts.push(`@${p}`)
+    }
+    if (refs.shot_annotations) parts.push(refs.shot_annotations)
+    return parts.join('；')
+  }
+
+  const handlePrefillAnchor = () => {
+    const anchor = buildAnchorLine()
+    if (!anchor) return
+    const existing = currentPrompt?.image_prompt || ''
+    const newVal = existing ? `${anchor}；${existing}` : `${anchor}；`
+    onEditPrompt(currentShot.shot_id, newVal, undefined)
+  }
 
   // 获取作用范围的目标 IDs
   const getScopeTargetIds = (scope: SpecialPrompt['scope']): string[] => {
@@ -143,6 +171,7 @@ export default function CentralWorkArea({
         {/* 人物 */}
         {groupedAssets.characters.slice(0, 6).map((asset) => {
           const ref = isReferenced(asset.asset_id)
+          const imgUrl = asset.images.length > 0 ? getImageUrl(projectId, asset.asset_type, asset.asset_id, 1) : null
           return (
             <div
               key={asset.asset_id}
@@ -150,8 +179,8 @@ export default function CentralWorkArea({
                 ref ? 'ring-2 ring-blue-500 bg-blue-900/30' : 'opacity-60'
               }`}
             >
-              {asset.images?.[0] ? (
-                <img src={asset.images[0]} alt={asset.name} className="w-8 h-8 rounded object-cover" />
+              {imgUrl ? (
+                <img src={imgUrl} alt={asset.name} className="w-8 h-8 rounded object-cover" />
               ) : (
                 <div className="w-8 h-8 rounded bg-gray-700 flex items-center justify-center text-xs text-gray-400">
                   {asset.name.slice(0, 2)}
@@ -166,6 +195,7 @@ export default function CentralWorkArea({
         {/* 场景 */}
         {groupedAssets.scenes.slice(0, 4).map((asset) => {
           const ref = isReferenced(asset.asset_id)
+          const imgUrl = asset.images.length > 0 ? getImageUrl(projectId, asset.asset_type, asset.asset_id, 1) : null
           return (
             <div
               key={asset.asset_id}
@@ -173,8 +203,8 @@ export default function CentralWorkArea({
                 ref ? 'ring-2 ring-blue-500 bg-blue-900/30' : 'opacity-60'
               }`}
             >
-              {asset.images?.[0] ? (
-                <img src={asset.images[0]} alt={asset.name} className="w-8 h-8 rounded object-cover" />
+              {imgUrl ? (
+                <img src={imgUrl} alt={asset.name} className="w-8 h-8 rounded object-cover" />
               ) : (
                 <div className="w-8 h-8 rounded bg-gray-700 flex items-center justify-center text-xs text-gray-400">
                   {asset.name.slice(0, 2)}
@@ -189,6 +219,7 @@ export default function CentralWorkArea({
         {/* 道具 */}
         {groupedAssets.props.slice(0, 4).map((asset) => {
           const ref = isReferenced(asset.asset_id)
+          const imgUrl = asset.images.length > 0 ? getImageUrl(projectId, asset.asset_type, asset.asset_id, 1) : null
           return (
             <div
               key={asset.asset_id}
@@ -196,8 +227,8 @@ export default function CentralWorkArea({
                 ref ? 'ring-2 ring-blue-500 bg-blue-900/30' : 'opacity-60'
               }`}
             >
-              {asset.images?.[0] ? (
-                <img src={asset.images[0]} alt={asset.name} className="w-8 h-8 rounded object-cover" />
+              {imgUrl ? (
+                <img src={imgUrl} alt={asset.name} className="w-8 h-8 rounded object-cover" />
               ) : (
                 <div className="w-8 h-8 rounded bg-gray-700 flex items-center justify-center text-xs text-gray-400">
                   {asset.name.slice(0, 2)}
@@ -247,7 +278,18 @@ export default function CentralWorkArea({
       <div className="flex-1 overflow-auto p-2">
         {mode === 'image' ? (
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium">图片提示词</label>
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium">图片提示词</label>
+              {currentShot.asset_refs && (
+                <button
+                  onClick={handlePrefillAnchor}
+                  className="text-xs px-2 py-0.5 bg-gray-700 text-gray-300 rounded hover:bg-gray-600"
+                  title="将 asset_refs 装扮信息预填为锚定声明行"
+                >
+                  预填锚定声明
+                </button>
+              )}
+            </div>
             <textarea
               className="w-full h-32 border border-gray-700 rounded p-2 text-sm resize-none focus:border-blue-500 focus:outline-none bg-gray-800 text-gray-200 placeholder-gray-600"
               value={currentPrompt?.image_prompt || ''}

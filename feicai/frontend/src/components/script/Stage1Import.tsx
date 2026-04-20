@@ -99,7 +99,7 @@ export default function Stage1Import({
     return segments.map((seg, idx) => (
       <span key={idx} id={seg.episode > 0 ? `ep-segment-${seg.episode}` : undefined}>
         {seg.episode > 1 && (
-          <span className="block my-2 flex items-center gap-2">
+          <span className="flex items-center gap-2 my-2 w-full">
             <span className="flex-1 border-t border-indigo-500/60" />
             <span className="text-xs text-indigo-400 font-medium shrink-0">EP{seg.episode}</span>
             <span className="flex-1 border-t border-indigo-500/60" />

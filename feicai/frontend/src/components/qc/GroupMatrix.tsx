@@ -55,7 +55,7 @@ export default function GroupMatrix({
             {/* 组列标题 */}
             {groups.map(g => (
               <th key={g.group_id} className="border-b border-gray-700 px-3 py-2 text-sm font-medium text-gray-400 min-w-[120px]">
-                {g.group_id} ({g.total_duration}s)
+                {g.group_id} ({Math.round(g.total_duration)}s)
               </th>
             ))}
           </tr>

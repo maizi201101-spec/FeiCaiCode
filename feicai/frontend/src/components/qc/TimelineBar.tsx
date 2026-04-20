@@ -37,7 +37,7 @@ export default function TimelineBar({ groups, onScrollToGroup }: TimelineBarProp
       >
         <span>{expanded ? '▼' : '▶'}</span>
         <span>时间线预览</span>
-        <span className="text-gray-600 ml-auto">总时长: {totalDuration.toFixed(1)}s</span>
+        <span className="text-gray-600 ml-auto">总时长: {Math.round(totalDuration)}s</span>
       </button>
 
       {/* 时间线内容 */}
@@ -56,7 +56,7 @@ export default function TimelineBar({ groups, onScrollToGroup }: TimelineBarProp
                 style={{ minWidth: `${minWidth}%`, width: `${minWidth}%` }}
               >
                 <span className="truncate px-1">{g.group_id}</span>
-                <span className="absolute bottom-0.5 text-xs opacity-80">{g.total_duration}s</span>
+                <span className="absolute bottom-0.5 text-xs opacity-80">{Math.round(g.total_duration)}s</span>
               </button>
             )
           })}

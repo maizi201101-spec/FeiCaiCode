@@ -14,7 +14,7 @@ interface EpisodeInfo {
 }
 
 interface WorkbenchLayoutProps {
-  children: (episode: EpisodeInfo | null) => React.ReactNode
+  children: (episode: EpisodeInfo | null, onEpisodesRefresh: () => void) => React.ReactNode
   activeTab: number
   onTabChange: (i: number) => void
 }
@@ -31,8 +31,14 @@ export default function WorkbenchLayout({
   const [drawerPinned, setDrawerPinned] = useState(() => {
     try { return localStorage.getItem('episode-drawer-pinned') === 'true' } catch { return false }
   })
-  const { episodes } = useEpisodes(projectIdNum)
+  const { episodes, refetch: refetchEpisodes } = useEpisodes(projectIdNum)
   const [projectName, setProjectName] = useState<string>('')
+  const [episodeRefreshToken, setEpisodeRefreshToken] = useState(0)
+
+  const handleEpisodesRefresh = () => {
+    refetchEpisodes()
+    setEpisodeRefreshToken((t) => t + 1)
+  }
 
   useEffect(() => {
     if (!projectIdNum) return
@@ -81,6 +87,7 @@ export default function WorkbenchLayout({
             projectId={projectIdNum}
             currentEpisodeId={currentEpisode?.id ?? null}
             onEpisodeChange={handleEpisodeIdChange}
+            refreshToken={episodeRefreshToken}
           />
         ) : (
           <select className="bg-gray-900 border border-gray-700 text-sm rounded px-2 py-1 text-gray-300">
@@ -105,7 +112,7 @@ export default function WorkbenchLayout({
         <div className="ml-auto flex items-center gap-3">
           {projectIdNum && <TaskIndicator projectId={projectIdNum} />}
           <Link
-            to="/settings"
+            to={`/settings?projectId=${projectIdNum}`}
             className="text-sm text-gray-400 hover:text-gray-200"
           >
             ⚙ 设置
@@ -128,7 +135,7 @@ export default function WorkbenchLayout({
         )}
 
         {/* 主工作区 */}
-        <main className="flex-1 overflow-auto min-w-0">{children(currentEpisode)}</main>
+        <main className="flex-1 overflow-auto min-w-0">{children(currentEpisode, handleEpisodesRefresh)}</main>
       </div>
     </div>
   )

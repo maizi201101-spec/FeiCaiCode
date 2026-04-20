@@ -4,7 +4,6 @@ import AssetGrid from '../../components/assets/AssetGrid'
 import ClusterLogPanel from '../../components/assets/ClusterLogPanel'
 import CostumeCollapseView from '../../components/assets/CostumeCollapseView'
 import { useAssets } from '../../hooks/useAssets'
-import { useEpisodes } from '../../hooks/useProjects'
 import { getClusterLog, collapsePreview, extractFromStoryboard } from '../../api/assets'
 import type { AssetType, CollapsePreviewResult } from '../../api/assets'
 
@@ -21,21 +20,15 @@ export default function Tab1Assets({ projectId, episodeId, onGoToTab0 }: Tab1Ass
     assets,
     loading,
     error,
-    extracting,
     filterType,
     setFilterType,
     searchQuery,
     setSearchQuery,
     editAsset,
     deleteAsset,
-    extractAssets,
     refetch,
   } = useAssets(projectId, episodeId, viewMode)
-  const { episodes } = useEpisodes(projectId)
   const [showAddModal, setShowAddModal] = useState(false)
-  const [showExtractModal, setShowExtractModal] = useState(false)
-  const [batchExtracting, setBatchExtracting] = useState(false)
-  const [batchProgress, setBatchProgress] = useState('')
   const [extractingFromStoryboard, setExtractingFromStoryboard] = useState(false)
   const [collapseViewData, setCollapseViewData] = useState<CollapsePreviewResult | null>(null)
   const [clusterLogOpen, setClusterLogOpen] = useState(false)
@@ -47,57 +40,6 @@ export default function Tab1Assets({ projectId, episodeId, onGoToTab0 }: Tab1Ass
     appearance: '',
     description: '',
   })
-
-  const handleExtract = async () => {
-    if (!episodeId) {
-      alert('请先选择集数')
-      return
-    }
-    try {
-      const result = await extractAssets({
-        episode_ids: [episodeId],
-        merge_mode: true,
-      })
-      alert(`提取完成：${result.results[0]?.characters_count} 角色，${result.results[0]?.scenes_count} 场景，${result.results[0]?.props_count} 道具`)
-    } catch (e) {
-      alert(e instanceof Error ? e.message : '提取失败')
-    }
-  }
-
-  const handleBatchExtract = async () => {
-    if (episodes.length === 0) {
-      alert('当前项目暂无集数')
-      return
-    }
-    if (!confirm(`将对全部 ${episodes.length} 集依次提取资产并合并，可能需要较长时间，确定开始？`)) return
-
-    setBatchExtracting(true)
-    let totalChars = 0, totalScenes = 0, totalProps = 0
-    try {
-      for (let i = 0; i < episodes.length; i++) {
-        const ep = episodes[i]
-        setBatchProgress(`EP${String(ep.number).padStart(2, '0')} (${i + 1}/${episodes.length}) 提取中...`)
-        try {
-          const result = await extractAssets({ episode_ids: [ep.id], merge_mode: true })
-          const r = result.results[0]
-          if (r) {
-            totalChars += r.characters_count
-            totalScenes += r.scenes_count
-            totalProps += r.props_count
-          }
-        } catch {
-          // 单集失败不中断，继续下一集
-        }
-      }
-      setBatchProgress('')
-      alert(`批量提取完成：${totalChars} 角色，${totalScenes} 场景，${totalProps} 道具`)
-    } catch (e) {
-      alert(e instanceof Error ? e.message : '批量提取失败')
-    } finally {
-      setBatchExtracting(false)
-      setBatchProgress('')
-    }
-  }
 
   const handleExtractFromStoryboard = async () => {
     if (!episodeId) {
@@ -167,14 +109,10 @@ export default function Tab1Assets({ projectId, episodeId, onGoToTab0 }: Tab1Ass
         onFilterTypeChange={setFilterType}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
-        onExtractClick={() => setShowExtractModal(true)}
-        onBatchExtractClick={handleBatchExtract}
         onExtractFromStoryboardClick={handleExtractFromStoryboard}
         onAddClick={() => setShowAddModal(true)}
         onOpenClusterLog={() => setClusterLogOpen(true)}
         hasClusterLog={hasClusterLog}
-        extracting={extracting}
-        batchExtracting={batchExtracting}
         extractingFromStoryboard={extractingFromStoryboard}
       />
 
@@ -182,20 +120,13 @@ export default function Tab1Assets({ projectId, episodeId, onGoToTab0 }: Tab1Ass
         <div className="px-4 py-2 bg-red-900/50 text-red-300 text-sm">{error}</div>
       )}
 
-      {batchProgress && (
-        <div className="px-4 py-2 bg-orange-900/30 text-orange-300 text-sm flex items-center gap-2">
-          <div className="w-3 h-3 border-2 border-orange-400 border-t-transparent rounded-full animate-spin shrink-0" />
-          {batchProgress}
-        </div>
-      )}
-
       <div className="flex flex-1 overflow-hidden">
         <div className="flex-1 overflow-auto">
-          {assets.length === 0 && !extracting && !batchExtracting ? (
+          {assets.length === 0 && !extractingFromStoryboard ? (
           <div className="flex flex-col items-center justify-center h-full gap-3 text-center">
             <div className="text-gray-400">暂无资产数据</div>
             <div className="text-sm text-gray-500">
-              点击「全集批量提取」自动提取所有集的角色、场景、道具
+              先完成分镜规划，再点击「从分镜提取」生成资产
             </div>
             {onGoToTab0 && (
               <button

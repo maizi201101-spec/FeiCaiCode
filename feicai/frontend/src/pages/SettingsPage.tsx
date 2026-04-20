@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { type GlobalSettings } from '../api/prompts'
 import { useGlobalSettings } from '../hooks/useGlobalSettings'
 import LLMConfig from '../components/settings/LLMConfig'
@@ -29,7 +29,8 @@ const SETTING_CATEGORIES = [
 ]
 
 export default function SettingsPage() {
-  const projectId = Number(useParams().projectId)
+  const [searchParams] = useSearchParams()
+  const projectId = Number(searchParams.get('projectId')) || null
   const { settings, loading, error, save } = useGlobalSettings(projectId)
   const [localSettings, setLocalSettings] = useState<GlobalSettings | null>(null)
   const [saving, setSaving] = useState(false)
@@ -79,14 +80,14 @@ export default function SettingsPage() {
       <header className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link
-            to={`/project/${projectId}`}
+            to={projectId ? `/project/${projectId}` : '/'}
             className="text-sm text-gray-400 hover:text-gray-200"
           >
             ← 返回工作台
           </Link>
           <span className="text-gray-600">|</span>
           <span className="text-sm font-medium text-gray-300">
-            项目 #{projectId} 设置
+            全局设置
           </span>
         </div>
         {activeCategory !== 'system' && (

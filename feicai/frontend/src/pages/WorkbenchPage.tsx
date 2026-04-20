@@ -38,11 +38,11 @@ export default function WorkbenchPage() {
 
   return (
     <WorkbenchLayout activeTab={activeTab} onTabChange={setActiveTab}>
-      {(episode: EpisodeInfo | null) => (
+      {(episode: EpisodeInfo | null, onEpisodesRefresh: () => void) => (
         <>
           {/* Tab 内容 */}
           {activeTab === 0 ? (
-            <Tab0ScriptManagement projectId={projectId} onGoToTab1={handleGoToTab1} />
+            <Tab0ScriptManagement projectId={projectId} onGoToTab1={handleGoToTab1} onSplitConfirmed={onEpisodesRefresh} />
           ) : activeTab === 1 ? (
             <Tab1Assets projectId={projectId} episodeId={episode?.id ?? null} onGoToTab0={handleGoToTab0} />
           ) : activeTab === 2 ? (

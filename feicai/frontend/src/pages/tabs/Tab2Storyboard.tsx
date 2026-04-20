@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useShots } from '../../hooks/useShots'
 import { type ShotUpdatePayload } from '../../api/shots'
-import { extractFromStoryboard } from '../../api/assets'
+
 import ShotTable from '../../components/storyboard/ShotTable'
 import GroupView from '../../components/storyboard/GroupView'
 import ShotEditPanel from '../../components/storyboard/ShotEditPanel'
@@ -15,7 +15,6 @@ interface Tab2StoryboardProps {
 export default function Tab2Storyboard({ projectId, episodeId }: Tab2StoryboardProps) {
   const [viewMode, setViewMode] = useState<'table' | 'group'>('table')
   const [editingShotId, setEditingShotId] = useState<string | null>(null)
-  const [extractingAssets, setExtractingAssets] = useState(false)
 
   const {
     shotsCollection,
@@ -67,22 +66,6 @@ export default function Tab2Storyboard({ projectId, episodeId }: Tab2StoryboardP
     }
   }
 
-  const handleExtractAssets = async () => {
-    if (!episodeId) {
-      alert('请先选择集数')
-      return
-    }
-    if (!confirm('将直接从当前集分镜提取资产并写入资产库，是否继续？')) return
-    setExtractingAssets(true)
-    try {
-      const result = await extractFromStoryboard(episodeId)
-      alert(`资产提取完成：${result.characters_count} 角色，${result.scenes_count} 场景，${result.props_count} 道具`)
-    } catch (e) {
-      alert(e instanceof Error ? e.message : '提取失败')
-    } finally {
-      setExtractingAssets(false)
-    }
-  }
 
   // 空状态
   if (!episodeId) {
@@ -163,13 +146,6 @@ export default function Tab2Storyboard({ projectId, episodeId }: Tab2StoryboardP
           {/* 操作按钮 */}
           <div className="flex gap-2">
             <ExportPromptsButton episodeId={episodeId} />
-            <button
-              onClick={handleExtractAssets}
-              disabled={extractingAssets || generating}
-              className="px-3 py-1 bg-teal-600 text-white rounded disabled:bg-gray-700 text-sm"
-            >
-              {extractingAssets ? '提取中...' : '提取资产'}
-            </button>
             <button
               onClick={refetch}
               className="px-3 py-1 bg-gray-700 text-gray-300 rounded hover:bg-gray-600"

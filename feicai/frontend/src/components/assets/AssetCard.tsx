@@ -17,6 +17,8 @@ interface AssetCardProps {
   projectId: number
   onUpdate: (assetType: AssetType, assetId: string, payload: AssetUpdatePayload) => Promise<Asset>
   onDelete: (assetType: AssetType, assetId: string) => Promise<void>
+  forceExpanded?: boolean | null
+  forceVariantsExpanded?: boolean | null
 }
 
 const TYPE_LABEL = { character: '角色', scene: '场景', prop: '道具' } as const
@@ -26,7 +28,7 @@ const TYPE_COLOR = {
   prop: 'bg-emerald-900/50 text-emerald-300',
 } as const
 
-export default function AssetCard({ asset, projectId, onUpdate, onDelete }: AssetCardProps) {
+export default function AssetCard({ asset, projectId, onUpdate, onDelete, forceExpanded, forceVariantsExpanded }: AssetCardProps) {
   const [expanded, setExpanded] = useState(false)
   const [editing, setEditing] = useState(false)
   const [editedName, setEditedName] = useState(asset.name)
@@ -34,6 +36,9 @@ export default function AssetCard({ asset, projectId, onUpdate, onDelete }: Asse
   const [editedDescription, setEditedDescription] = useState(asset.description || '')
   const [saving, setSaving] = useState(false)
   const [variantsExpanded, setVariantsExpanded] = useState(false)
+
+  const isExpanded = forceExpanded != null ? forceExpanded : expanded
+  const isVariantsExpanded = forceVariantsExpanded != null ? forceVariantsExpanded : variantsExpanded
 
   const [images, setImages] = useState<AssetImage[]>([])
   const [currentImageIndex, setCurrentImageIndex] = useState(1)
@@ -198,11 +203,19 @@ export default function AssetCard({ asset, projectId, onUpdate, onDelete }: Asse
           {/* 右侧操作列（hover 显示） */}
           <div className="shrink-0 flex flex-col justify-center gap-1 pr-2 opacity-0 group-hover:opacity-100 transition-opacity">
             <button
-              onClick={() => setExpanded(!expanded)}
+              onClick={() => setExpanded(!isExpanded)}
               className="text-xs px-2 py-0.5 bg-gray-700 text-gray-300 rounded hover:bg-gray-600"
             >
-              {expanded ? '收起' : '展开'}
+              {isExpanded ? '收起' : '展开'}
             </button>
+            {asset.needs_review && (
+              <button
+                onClick={() => onUpdate(asset.asset_type, asset.asset_id, { needs_review: false })}
+                className="text-xs px-2 py-0.5 bg-yellow-900/50 text-yellow-400 rounded hover:bg-yellow-800/60"
+              >
+                ✓ 审核
+              </button>
+            )}
             <button
               onClick={handleDelete}
               className="text-xs px-2 py-0.5 bg-red-900/40 text-red-400 rounded hover:bg-red-800/60"
@@ -213,7 +226,7 @@ export default function AssetCard({ asset, projectId, onUpdate, onDelete }: Asse
         </div>
 
         {/* 展开区：图片管理 + 内联编辑 */}
-        {expanded && (
+        {isExpanded && (
           <div className="border-t border-gray-700 p-3 space-y-3">
             {/* 图片管理区 */}
             <div className="flex gap-3 items-start">
@@ -384,7 +397,7 @@ export default function AssetCard({ asset, projectId, onUpdate, onDelete }: Asse
       {/* ── Variant 子卡片 ──────────────────────────────── */}
       {asset.variants.length > 0 && (
         <div className="mt-0.5">
-          {variantsExpanded ? (
+          {isVariantsExpanded ? (
             <>
               {asset.variants.map((v) => (
                 <AssetVariantRow

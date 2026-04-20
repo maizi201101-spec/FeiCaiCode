@@ -131,6 +131,12 @@ async def generate_prompts_by_ai(episode_id: int) -> PromptsCollection:
             "shot_size": shot.shot_size.value,
             "camera_move": shot.camera_move.value,
             "assets": shot.assets,
+            "asset_refs": {
+                "characters": [{"name": c.name, "costume": c.costume} for c in shot.asset_refs.characters],
+                "scenes": shot.asset_refs.scenes,
+                "props": shot.asset_refs.props,
+                "shot_annotations": shot.asset_refs.shot_annotations,
+            } if shot.asset_refs else None,
             "frame_action": shot.frame_action,
             "lighting": shot.lighting,
             "speech": speech_lines,
@@ -414,4 +420,43 @@ async def update_global_settings(project_id: int, settings: GlobalSettings) -> N
                 [key, value, now, value, now]
             )
 
+        await db.commit()
+
+async def get_llm_only_settings() -> GlobalSettings:
+    """读取全局 LLM 配置（不依赖项目ID）"""
+    settings = GlobalSettings()
+    async with aiosqlite.connect(DB_PATH) as db:
+        cursor = await db.execute(
+            "SELECT key, value FROM settings WHERE key IN ('llm_api_key', 'llm_base_url', 'llm_model')"
+        )
+        rows = await cursor.fetchall()
+    for key, value in rows:
+        if key == "llm_api_key":
+            settings.llm_api_key = value
+        elif key == "llm_base_url":
+            settings.llm_base_url = value
+        elif key == "llm_model":
+            settings.llm_model = value
+    return settings
+
+
+async def update_llm_only_settings(settings: GlobalSettings) -> None:
+    """更新全局 LLM 配置（不依赖项目ID）"""
+    from datetime import datetime
+    now = datetime.now().isoformat()
+    pairs = [
+        ("llm_api_key", settings.llm_api_key),
+        ("llm_base_url", settings.llm_base_url),
+        ("llm_model", settings.llm_model),
+    ]
+    async with aiosqlite.connect(DB_PATH) as db:
+        for key, value in pairs:
+            await db.execute(
+                """
+                INSERT INTO settings (key, value, updated_at)
+                VALUES (?, ?, ?)
+                ON CONFLICT(key) DO UPDATE SET value = ?, updated_at = ?
+                """,
+                [key, value, now, value, now]
+            )
         await db.commit()

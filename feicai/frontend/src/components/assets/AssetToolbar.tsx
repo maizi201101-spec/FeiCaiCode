@@ -7,14 +7,10 @@ interface AssetToolbarProps {
   onFilterTypeChange: (type: AssetType | null) => void
   searchQuery: string
   onSearchChange: (query: string) => void
-  onExtractClick: () => void
-  onBatchExtractClick: () => void
   onExtractFromStoryboardClick: () => void
   onAddClick: () => void
   onOpenClusterLog: () => void
   hasClusterLog: boolean
-  extracting: boolean
-  batchExtracting: boolean
   extractingFromStoryboard: boolean
 }
 
@@ -25,14 +21,10 @@ export default function AssetToolbar({
   onFilterTypeChange,
   searchQuery,
   onSearchChange,
-  onExtractClick,
-  onBatchExtractClick,
   onExtractFromStoryboardClick,
   onAddClick,
   onOpenClusterLog,
   hasClusterLog,
-  extracting,
-  batchExtracting,
   extractingFromStoryboard,
 }: AssetToolbarProps) {
   return (
@@ -118,31 +110,17 @@ export default function AssetToolbar({
       <button
         onClick={onOpenClusterLog}
         disabled={!hasClusterLog}
-        title={hasClusterLog ? '查看聚类审核日志' : '暂无聚类日志，请先提取资产'}
+        title={hasClusterLog ? '查看聚类审核日志' : '暂无聚类日志'}
         className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:text-gray-600 text-gray-300 text-sm rounded-lg transition-colors whitespace-nowrap"
       >
         聚类日志
       </button>
       <button
-        onClick={onBatchExtractClick}
-        disabled={batchExtracting || extracting}
-        className="px-3 py-1.5 bg-orange-600 hover:bg-orange-500 disabled:bg-gray-700 text-white text-sm rounded-lg transition-colors whitespace-nowrap"
-      >
-        {batchExtracting ? '批量提取中...' : '全集批量提取'}
-      </button>
-      <button
         onClick={onExtractFromStoryboardClick}
-        disabled={extractingFromStoryboard || extracting || batchExtracting}
+        disabled={extractingFromStoryboard}
         className="px-3 py-1.5 bg-teal-600 hover:bg-teal-500 disabled:bg-gray-700 text-white text-sm rounded-lg transition-colors whitespace-nowrap"
       >
         {extractingFromStoryboard ? '提取中...' : '从分镜提取'}
-      </button>
-      <button
-        onClick={onExtractClick}
-        disabled={extracting || batchExtracting}
-        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-gray-700 text-white text-sm rounded-lg transition-colors"
-      >
-        {extracting ? '提取中...' : '提取资产'}
       </button>
       <button
         onClick={onAddClick}

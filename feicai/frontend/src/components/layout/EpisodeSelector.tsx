@@ -5,18 +5,20 @@ interface EpisodeSelectorProps {
   projectId: number
   currentEpisodeId: number | null
   onEpisodeChange: (episodeId: number) => void
+  refreshToken?: number
 }
 
 export default function EpisodeSelector({
   projectId,
   currentEpisodeId,
   onEpisodeChange,
+  refreshToken,
 }: EpisodeSelectorProps) {
   const { episodes, refetch, createEpisode } = useEpisodes(projectId)
 
   useEffect(() => {
     refetch()
-  }, [projectId])
+  }, [projectId, refreshToken])
 
   const handleAddEpisode = async () => {
     const next = episodes.length + 1

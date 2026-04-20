@@ -6,11 +6,27 @@
 from fastapi import APIRouter, HTTPException
 
 from schemas.prompts_schema import GlobalSettings
-from services.prompt_service import get_global_settings, update_global_settings
+from services.prompt_service import get_global_settings, update_global_settings, get_llm_only_settings, update_llm_only_settings
 from services.script_service import get_project_path
 from services.llm_client import get_llm_config, call_llm
 
 router = APIRouter(prefix="/api/projects/{project_id}/settings", tags=["settings"])
+
+global_router = APIRouter(prefix="/api/settings", tags=["settings"])
+
+
+@global_router.get("/global", response_model=GlobalSettings)
+async def get_global_only_settings():
+    """获取全局设置（不依赖项目，只读 LLM 全局配置）"""
+    settings = await get_llm_only_settings()
+    return settings
+
+
+@global_router.put("/global", response_model=GlobalSettings)
+async def update_global_only_settings(settings: GlobalSettings):
+    """更新全局 LLM 设置（不依赖项目）"""
+    await update_llm_only_settings(settings)
+    return settings
 
 
 @router.get("", response_model=GlobalSettings)

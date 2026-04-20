@@ -19,7 +19,7 @@ export default function EpisodeScriptPanel({
   onRegenerateSummary,
   onScriptUpdated,
 }: EpisodeScriptPanelProps) {
-  const [showFullScript, setShowFullScript] = useState(false)
+  const [showFullScript, setShowFullScript] = useState(true)
   const [editing, setEditing] = useState(false)
   const [editContent, setEditContent] = useState('')
   const [saving, setSaving] = useState(false)
@@ -78,7 +78,7 @@ export default function EpisodeScriptPanel({
             )}
           </div>
         </div>
-        <div className={`p-4 overflow-y-auto ${showFullScript || editing ? 'max-h-[400px]' : 'max-h-[200px]'}`}>
+        <div className="p-4 overflow-y-auto flex-1 min-h-0">
           {editing ? (
             <div className="flex flex-col gap-2 h-full">
               <textarea
