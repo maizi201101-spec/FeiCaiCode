@@ -57,19 +57,17 @@ async def generate_summary(
 
     使用 LLM 调用生成梗概
     """
-    prompt = f"""请为以下剧本内容生成一段 100-200 字的梗概，概括主要剧情。
-
-剧本内容：
-{episode_content[:2000]}
+    system_prompt = """你是一个专业的剧本分析助手，擅长概括剧情梗概。
 
 要求：
 1. 概括主要剧情走向，保留关键事件和人物
 2. 不要添加新内容，忠实于原文
 3. 字数控制在 100-200 字
-4. 使用简洁、客观的语言
-"""
+4. 使用简洁、客观的语言"""
 
-    system_prompt = "你是一个专业的剧本分析助手，擅长概括剧情梗概。"
+    prompt = f"""请为以下剧本内容生成一段 100-200 字的梗概：
+
+{episode_content[:2000]}"""
 
     summary = await call_llm(prompt, system_prompt, temperature=0.3, max_tokens=500)
     return summary.strip()
