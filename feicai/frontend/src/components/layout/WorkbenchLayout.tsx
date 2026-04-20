@@ -135,7 +135,7 @@ export default function WorkbenchLayout({
         )}
 
         {/* 主工作区 */}
-        <main className="flex-1 overflow-auto min-w-0">{children(currentEpisode, handleEpisodesRefresh)}</main>
+        <main className="flex-1 overflow-hidden min-w-0">{children(currentEpisode, handleEpisodesRefresh)}</main>
       </div>
     </div>
   )
