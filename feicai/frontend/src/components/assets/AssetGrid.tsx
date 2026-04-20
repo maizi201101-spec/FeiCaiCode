@@ -21,7 +21,7 @@ export default function AssetGrid({ assets, projectId, onUpdate, onDelete, onAdd
     return (
       <div className="flex flex-col items-center justify-center py-12 text-gray-600">
         <p className="text-lg mb-2">暂无资产</p>
-        <p className="text-sm mb-4">点击「从分镜提取」或点击「新增」手动添加</p>
+        <p className="text-sm mb-4">点击「全集批量提取」或点击「新增」手动添加</p>
         <button
           onClick={onAddClick}
           className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm rounded-lg transition-colors"

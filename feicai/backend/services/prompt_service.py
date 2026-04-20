@@ -89,32 +89,53 @@ async def generate_prompts_by_ai(episode_id: int) -> PromptsCollection:
     if not shots.shots:
         raise ValueError("无分镜数据，无法生成提示词")
 
-    # 构建资产摘要
+    # 从 episode_assets.json 获取本集实际使用的资产 ID 集合
+    project_path = await get_project_path(episode["project_id"])
+    ep_num = episode["number"]
+    ep_assets_file = Path(project_path) / "episodes" / f"EP{ep_num:02d}" / "episode_assets.json"
+    episode_asset_ids: set = set()
+    if ep_assets_file.exists():
+        try:
+            ep_assets_data = json.loads(ep_assets_file.read_text(encoding="utf-8"))
+            episode_asset_ids.update(ep_assets_data.get("characters", []))
+            episode_asset_ids.update(ep_assets_data.get("scenes", []))
+            episode_asset_ids.update(ep_assets_data.get("props", []))
+        except Exception:
+            pass  # 读取失败时降级为全量注入
+
+    def _should_include(asset_id: str) -> bool:
+        # 无 episode_assets.json 时全量注入（降级兜底）
+        return not episode_asset_ids or asset_id in episode_asset_ids
+
+    # 构建资产摘要（只注入本集实际用到的资产）
     assets_info = []
     for char in assets.characters:
-        assets_info.append({
-            "type": "人物",
-            "asset_id": char.asset_id,
-            "name": char.name,
-            "appearance": char.appearance,
-            "outfit": char.outfit,
-        })
+        if _should_include(char.asset_id):
+            assets_info.append({
+                "type": "人物",
+                "asset_id": char.asset_id,
+                "name": char.name,
+                "appearance": char.appearance,
+                "outfit": char.outfit,
+            })
     for scene in assets.scenes:
-        assets_info.append({
-            "type": "场景",
-            "asset_id": scene.asset_id,
-            "name": scene.name,
-            "description": scene.description,
-            "visual_elements": scene.visual_elements,
-            "lighting": scene.lighting,
-        })
+        if _should_include(scene.asset_id):
+            assets_info.append({
+                "type": "场景",
+                "asset_id": scene.asset_id,
+                "name": scene.name,
+                "description": scene.description,
+                "visual_elements": scene.visual_elements,
+                "lighting": scene.lighting,
+            })
     for prop in assets.props:
-        assets_info.append({
-            "type": "道具",
-            "asset_id": prop.asset_id,
-            "name": prop.name,
-            "description": prop.description,
-        })
+        if _should_include(prop.asset_id):
+            assets_info.append({
+                "type": "道具",
+                "asset_id": prop.asset_id,
+                "name": prop.name,
+                "description": prop.description,
+            })
 
     # 构建分镜摘要
     shots_info = []
@@ -211,7 +232,7 @@ async def generate_prompts_by_ai(episode_id: int) -> PromptsCollection:
     if effects_block:
         prompt += effects_block
 
-    result = await call_llm(prompt, system_prompt, temperature=0.3, max_tokens=8000)
+    result = await call_llm(prompt, system_prompt, temperature=0.3, max_tokens=16000)
 
     # 解析 JSON
     json_match = re.search(r"\{[\s\S]*\}", result)

@@ -147,7 +147,7 @@ async def generate_storyboard_md(episode_id: int, shots: ShotsCollection) -> str
     return md_content
 
 
-async def plan_shots_by_ai(episode_id: int) -> ShotsCollection:
+async def plan_shots_by_ai(episode_id: int) -> tuple[ShotsCollection, list[str]]:
     """调用 LLM 分析剧本，生成分镜（含 asset_refs）并积累装扮注册表"""
     episode = await get_episode_info(episode_id)
     if not episode:
@@ -229,11 +229,14 @@ async def plan_shots_by_ai(episode_id: int) -> ShotsCollection:
 }"""
 
     # LLM User Prompt（仅包含动态数据）
-    prompt = "## 剧本内容\n" + script_content[:6000]
+    script_truncated = script_content[:12000]
+    prompt = "## 剧本内容\n" + script_truncated
+    if len(script_content) > 12000:
+        prompt += f"\n\n[注意：剧本已截断，仅处理前12000字符，原文共{len(script_content)}字符]"
     if costume_context:
         prompt += "\n\n" + costume_context
 
-    result = await call_llm(prompt, system_prompt, temperature=0.3, max_tokens=8000)
+    result = await call_llm(prompt, system_prompt, temperature=0.3, max_tokens=32000)
 
     # 解析 JSON
     json_match = re.search(r"\{[\s\S]*\}", result)
@@ -245,8 +248,52 @@ async def plan_shots_by_ai(episode_id: int) -> ShotsCollection:
     except json.JSONDecodeError as e:
         raise ValueError(f"JSON 解析失败: {e}")
 
+    # 枚举容错映射：LLM 输出非标准值时映射到最近有效值
+    _SHOT_TYPE_MAP = {
+        "空景": "空境", "空镜": "空境",
+        "对白": "对话", "台词": "对话",
+        "行动": "行动冲突", "冲突": "行动冲突",
+        "战斗": "打斗", "格斗": "打斗",
+        "移动": "调度", "走位": "调度",
+    }
+    _SHOT_SIZE_MAP = {
+        "超远景": "大远景", "航拍": "大远景",
+        "中远景": "远景",
+        "全身": "全景",
+        "半身": "中景", "腰景": "中景",
+        "中近": "中近景",
+        "胸景": "近景", "肩景": "近景",
+        "脸部": "特写", "大特写": "特写", "极特写": "特写",
+    }
+    _CAMERA_MAP = {
+        "静止": "固定", "静": "固定",
+        "推": "缓慢推进", "推进": "缓慢推进",
+        "拉": "缓慢拉开", "拉开": "缓慢拉开",
+        "横移": "缓慢横移", "平移": "缓慢横移",
+        "左摇": "缓慢左摇", "右摇": "缓慢右摇",
+        "跟拍": "跟随",
+        "手持": "手持跟随",
+        "升": "缓慢升起", "降": "缓慢下降",
+        "环绕": "缓慢环绕", "旋转": "缓慢环绕",
+        "摇摄": "快速摇摄",
+    }
+
+    def _coerce_enum(value: str, enum_cls, fallback_map: dict, default: str):
+        """容错：先尝试直接匹配，再查 fallback_map，最后用 default"""
+        try:
+            return enum_cls(value)
+        except ValueError:
+            mapped = fallback_map.get(value)
+            if mapped:
+                try:
+                    return enum_cls(mapped)
+                except ValueError:
+                    pass
+            return enum_cls(default)
+
     # 构建 ShotsCollection
     shots = []
+    parse_warnings = []
     for s in data.get("shots", []):
         try:
             # 解析 asset_refs
@@ -260,15 +307,19 @@ async def plan_shots_by_ai(episode_id: int) -> ShotsCollection:
                     shot_annotations=asset_refs_data.get("shot_annotations", "")
                 )
 
+            shot_type_raw = s.get("shot_type", "对话")
+            shot_size_raw = s.get("shot_size", "中景")
+            camera_raw = s.get("camera_move", "固定")
+
             shot = Shot(
                 shot_id=s["shot_id"],
                 group_id=s["group_id"],
                 scene_id=s.get("scene_id", ""),
                 time_range=TimeRange(**s["time_range"]),
                 duration=s["duration"],
-                shot_type=ShotType(s["shot_type"]),
-                shot_size=ShotSize(s["shot_size"]),
-                camera_move=CameraMove(s["camera_move"]),
+                shot_type=_coerce_enum(shot_type_raw, ShotType, _SHOT_TYPE_MAP, "对话"),
+                shot_size=_coerce_enum(shot_size_raw, ShotSize, _SHOT_SIZE_MAP, "中景"),
+                camera_move=_coerce_enum(camera_raw, CameraMove, _CAMERA_MAP, "固定"),
                 assets=s.get("assets", []),
                 asset_refs=asset_refs,
                 frame_action=s["frame_action"],
@@ -279,7 +330,9 @@ async def plan_shots_by_ai(episode_id: int) -> ShotsCollection:
             )
             shots.append(shot)
         except Exception as e:
-            print(f"镜头解析失败: {e}")
+            warn_msg = f"镜头 {s.get('shot_id', '?')} 解析失败: {e}"
+            print(warn_msg)
+            parse_warnings.append(warn_msg)
             continue
 
     groups = []
@@ -312,7 +365,7 @@ async def plan_shots_by_ai(episode_id: int) -> ShotsCollection:
     # 生成 storyboard.md
     await generate_storyboard_md(episode_id, collection)
 
-    return collection
+    return collection, parse_warnings
 
 
 async def update_shot_field(episode_id: int, shot_id: str, updates: ShotUpdate) -> Optional[Shot]:

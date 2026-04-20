@@ -69,19 +69,31 @@ async def write_assets(project_id: int, assets: AssetsCollection) -> None:
 # ═══════════════════════════════════════════════════════════════
 
 
-def _name_similar(a: str, b: str) -> bool:
+def _name_similar(a: str, b: str, asset_type: str = "") -> bool:
     """判断两个资产名称是否指向同一实体（用于程序聚类）。
-    规则：完全匹配 > 包含匹配 > 2字以内单字重叠 > 3字以上 bigram 重叠
+
+    角色/道具：完全匹配 > 包含匹配 > 2字以内单字重叠 > 3字以上任意bigram重叠
+    场景：完全匹配 > 包含匹配 > Jaccard相似度≥50%（防止"后山树林"/"后山土坟"误合并）
     """
     a, b = a.strip(), b.strip()
     if a == b:
         return True
     if a in b or b in a:
         return True
-    # 短名称：共享任一字符即视为相似（应对缩称）
+
+    if asset_type == "scene":
+        # 场景用 Jaccard 阈值，要求共享 bigram 占并集的 50% 以上
+        if len(a) < 2 or len(b) < 2:
+            return bool(set(a) & set(b))
+        bigrams_a = {a[i:i+2] for i in range(len(a)-1)}
+        bigrams_b = {b[i:i+2] for i in range(len(b)-1)}
+        intersection = bigrams_a & bigrams_b
+        union = bigrams_a | bigrams_b
+        return len(intersection) / len(union) >= 0.5
+
+    # 角色/道具：原有宽松规则
     if len(a) <= 2 or len(b) <= 2:
         return bool(set(a) & set(b))
-    # 长名称：有 bigram 重叠即视为相似
     bigrams_a = {a[i:i+2] for i in range(len(a)-1)}
     bigrams_b = {b[i:i+2] for i in range(len(b)-1)}
     return bool(bigrams_a & bigrams_b)
@@ -160,7 +172,7 @@ async def extract_raw_mentions_from_episode(
 {script_content}"""
 
     try:
-        result = await call_llm(prompt, system_prompt, temperature=0.1, max_tokens=2000)
+        result = await call_llm(prompt, system_prompt, temperature=0.1, max_tokens=4000)
     except ValueError as e:
         return {"episode_id": episode_id, "episode_number": episode["number"],
                 "status": "failed", "error": str(e)}
@@ -255,7 +267,7 @@ def cluster_raw_mentions(
             # 找已有簇中是否有相似名称
             matched = None
             for cluster in type_clusters:
-                if any(_name_similar(name, n) for n in cluster["all_names"]):
+                if any(_name_similar(name, n, asset_type) for n in cluster["all_names"]):
                     matched = cluster
                     break
 
@@ -273,7 +285,7 @@ def cluster_raw_mentions(
                 # 检查是否匹配已有资产
                 existing_id = None
                 for existing_name, (eid, etype) in existing_by_name.items():
-                    if etype == asset_type and _name_similar(name, existing_name):
+                    if etype == asset_type and _name_similar(name, existing_name, asset_type):
                         existing_id = eid
                         break
 
@@ -353,6 +365,8 @@ async def consolidate_entity_cluster(
         rules = """【base_appearance 规则】只填永久稳定特征：
   ✓ 骨相、发色发型、体型、标志性配饰、基础服装
   ✗ 不填：哭泣/愤怒/惊恐等情绪、临时擦伤/流血、单集特有动作
+【重要】若所有集的 raw_fragments 均为空或标注"（无外观描述）"：
+  outfit 和 base_appearance 必须填"待补充"，禁止根据角色身份、名字或剧情推断服饰
 【variant 触发标准】只有真正的视觉形态变化才建 variant：
   ✓ 换装（正装↔便装）、重大伤势（包扎/血迹）、能力爆发（光芒/特效）、伪装/化妆
   ✗ 不建：普通情绪变化、微表情、日常动作"""
@@ -372,7 +386,8 @@ async def consolidate_entity_cluster(
   ],
   "needs_review": false
 }"""
-        rules = """【base_description 规则】只填场景的固定不变特征，不填单集特有的临时陈设变化"""
+        rules = """【base_description 规则】只填场景的固定不变特征，不填单集特有的临时陈设变化
+【重要】若所有集的 raw_fragments 均为空，base_description 必须填"待补充"，禁止推断"""
     else:  # prop
         output_schema = """{
   "base_description": "道具的固定外观：材质/形状/颜色/尺寸/标志性特征",
@@ -395,7 +410,7 @@ async def consolidate_entity_cluster(
 {episodes_text}"""
 
     try:
-        result = await call_llm(prompt, system_prompt, temperature=0.1, max_tokens=1500)
+        result = await call_llm(prompt, system_prompt, temperature=0.1, max_tokens=3000)
     except ValueError:
         return None
 

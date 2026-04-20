@@ -28,12 +28,17 @@ async def execute_shot_planning(task_id: int, episode_id: int):
     """执行分镜规划任务（后台任务）"""
     try:
         await update_task_status(task_id, "processing")
-        collection = await plan_shots_by_ai(episode_id)
-        await update_task_status(
-            task_id,
-            "completed",
-            result=f"生成了 {len(collection.shots)} 个镜头，{len(collection.groups)} 个组"
-        )
+        collection, parse_warnings = await plan_shots_by_ai(episode_id)
+        total = len(collection.shots)
+        groups = len(collection.groups)
+        result_msg = f"生成了 {total} 个镜头，{groups} 个组"
+        if parse_warnings:
+            result_msg += f"（{len(parse_warnings)} 个镜头解析警告，详见日志）"
+        status = "completed" if total > 0 else "failed"
+        if status == "failed":
+            await update_task_status(task_id, "failed", error="所有镜头均解析失败，请检查LLM输出")
+        else:
+            await update_task_status(task_id, status, result=result_msg)
     except Exception as e:
         await update_task_status(task_id, "failed", error=str(e))
 

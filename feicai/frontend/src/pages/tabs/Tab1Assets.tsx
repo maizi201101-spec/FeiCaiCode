@@ -4,8 +4,8 @@ import AssetGrid from '../../components/assets/AssetGrid'
 import ClusterLogPanel from '../../components/assets/ClusterLogPanel'
 import CostumeCollapseView from '../../components/assets/CostumeCollapseView'
 import { useAssets } from '../../hooks/useAssets'
-import { getClusterLog, collapsePreview, extractFromStoryboard, batchCollapsePreview } from '../../api/assets'
-import type { AssetType, CollapsePreviewResult, BatchCollapsePreviewResult } from '../../api/assets'
+import { getClusterLog, extractFromStoryboard, batchCollapsePreview } from '../../api/assets'
+import type { AssetType, BatchCollapsePreviewResult } from '../../api/assets'
 
 interface Tab1AssetsProps {
   projectId: number
@@ -29,8 +29,6 @@ export default function Tab1Assets({ projectId, episodeId, onGoToTab0 }: Tab1Ass
     refetch,
   } = useAssets(projectId, episodeId, viewMode)
   const [showAddModal, setShowAddModal] = useState(false)
-  const [extractingFromStoryboard, setExtractingFromStoryboard] = useState(false)
-  const [collapseViewData, setCollapseViewData] = useState<CollapsePreviewResult | null>(null)
   const [batchExtracting, setBatchExtracting] = useState(false)
   const [batchCollapseViewData, setBatchCollapseViewData] = useState<BatchCollapsePreviewResult | null>(null)
   const [clusterLogOpen, setClusterLogOpen] = useState(false)
@@ -42,33 +40,6 @@ export default function Tab1Assets({ projectId, episodeId, onGoToTab0 }: Tab1Ass
     appearance: '',
     description: '',
   })
-
-  const handleExtractFromStoryboard = async () => {
-    if (!episodeId) {
-      alert('请先选择集数')
-      return
-    }
-    setExtractingFromStoryboard(true)
-    try {
-      const preview = await collapsePreview(episodeId)
-      setCollapseViewData(preview)
-    } catch (e) {
-      alert(e instanceof Error ? e.message : '从分镜提取失败')
-    } finally {
-      setExtractingFromStoryboard(false)
-    }
-  }
-
-  const handleCollapseConfirm = async (selectedKeys: string[]) => {
-    if (!episodeId) return
-    try {
-      await extractFromStoryboard(episodeId, selectedKeys)
-    } catch (e) {
-      alert(e instanceof Error ? e.message : '资产写入失败')
-    }
-    setCollapseViewData(null)
-    refetch()
-  }
 
   const handleBatchExtractFromStoryboard = async () => {
     setBatchExtracting(true)
@@ -99,12 +70,11 @@ export default function Tab1Assets({ projectId, episodeId, onGoToTab0 }: Tab1Ass
     refetch()
   }
 
-  // 检测是否有聚类日志
   useEffect(() => {
     getClusterLog(projectId)
       .then((log) => setHasClusterLog((log.clusters?.length ?? 0) > 0))
       .catch(() => {})
-  }, [projectId, assets]) // assets 变化时重新检测（提取后刷新）
+  }, [projectId, assets])
 
   const handleAdd = async () => {
     if (!addForm.asset_id || !addForm.name) {
@@ -140,12 +110,10 @@ export default function Tab1Assets({ projectId, episodeId, onGoToTab0 }: Tab1Ass
         onFilterTypeChange={setFilterType}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
-        onExtractFromStoryboardClick={handleExtractFromStoryboard}
         onBatchExtractClick={handleBatchExtractFromStoryboard}
         onAddClick={() => setShowAddModal(true)}
         onOpenClusterLog={() => setClusterLogOpen(true)}
         hasClusterLog={hasClusterLog}
-        extractingFromStoryboard={extractingFromStoryboard}
         batchExtracting={batchExtracting}
       />
 
@@ -155,11 +123,11 @@ export default function Tab1Assets({ projectId, episodeId, onGoToTab0 }: Tab1Ass
 
       <div className="flex flex-1 overflow-hidden">
         <div className="flex-1 overflow-auto">
-          {assets.length === 0 && !extractingFromStoryboard ? (
+          {assets.length === 0 && !batchExtracting ? (
           <div className="flex flex-col items-center justify-center h-full gap-3 text-center">
             <div className="text-gray-400">暂无资产数据</div>
             <div className="text-sm text-gray-500">
-              先完成分镜规划，再点击「从分镜提取」生成资产
+              先完成分镜规划，再点击「全集批量提取」生成资产
             </div>
             {onGoToTab0 && (
               <button
@@ -264,14 +232,6 @@ export default function Tab1Assets({ projectId, episodeId, onGoToTab0 }: Tab1Ass
         </div>
       )}
 
-      {/* 从分镜提取 - 装扮坍缩确认弹窗 */}
-      {collapseViewData && (
-        <CostumeCollapseView
-          collapsedData={collapseViewData}
-          onConfirm={handleCollapseConfirm}
-          onCancel={() => setCollapseViewData(null)}
-        />
-      )}
       {/* 全集批量提取 - 装扮坍缩确认弹窗 */}
       {batchCollapseViewData && (
         <CostumeCollapseView
