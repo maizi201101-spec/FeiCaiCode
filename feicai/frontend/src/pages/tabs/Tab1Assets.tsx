@@ -4,8 +4,8 @@ import AssetGrid from '../../components/assets/AssetGrid'
 import ClusterLogPanel from '../../components/assets/ClusterLogPanel'
 import CostumeCollapseView from '../../components/assets/CostumeCollapseView'
 import { useAssets } from '../../hooks/useAssets'
-import { getClusterLog, collapsePreview, extractFromStoryboard } from '../../api/assets'
-import type { AssetType, CollapsePreviewResult } from '../../api/assets'
+import { getClusterLog, collapsePreview, extractFromStoryboard, batchCollapsePreview } from '../../api/assets'
+import type { AssetType, CollapsePreviewResult, BatchCollapsePreviewResult } from '../../api/assets'
 
 interface Tab1AssetsProps {
   projectId: number
@@ -31,6 +31,8 @@ export default function Tab1Assets({ projectId, episodeId, onGoToTab0 }: Tab1Ass
   const [showAddModal, setShowAddModal] = useState(false)
   const [extractingFromStoryboard, setExtractingFromStoryboard] = useState(false)
   const [collapseViewData, setCollapseViewData] = useState<CollapsePreviewResult | null>(null)
+  const [batchExtracting, setBatchExtracting] = useState(false)
+  const [batchCollapseViewData, setBatchCollapseViewData] = useState<BatchCollapsePreviewResult | null>(null)
   const [clusterLogOpen, setClusterLogOpen] = useState(false)
   const [hasClusterLog, setHasClusterLog] = useState(false)
   const [addForm, setAddForm] = useState({
@@ -65,6 +67,35 @@ export default function Tab1Assets({ projectId, episodeId, onGoToTab0 }: Tab1Ass
       alert(e instanceof Error ? e.message : '资产写入失败')
     }
     setCollapseViewData(null)
+    refetch()
+  }
+
+  const handleBatchExtractFromStoryboard = async () => {
+    setBatchExtracting(true)
+    try {
+      const preview = await batchCollapsePreview(projectId)
+      setBatchCollapseViewData(preview)
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '全集批量预览失败')
+    } finally {
+      setBatchExtracting(false)
+    }
+  }
+
+  const handleBatchCollapseConfirm = async (selectedKeys: string[]) => {
+    if (!batchCollapseViewData) return
+    const episodeIds = batchCollapseViewData.episode_ids
+    setBatchExtracting(true)
+    try {
+      for (const epId of episodeIds) {
+        await extractFromStoryboard(epId, selectedKeys)
+      }
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '批量写入失败')
+    } finally {
+      setBatchExtracting(false)
+    }
+    setBatchCollapseViewData(null)
     refetch()
   }
 
@@ -110,10 +141,12 @@ export default function Tab1Assets({ projectId, episodeId, onGoToTab0 }: Tab1Ass
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         onExtractFromStoryboardClick={handleExtractFromStoryboard}
+        onBatchExtractClick={handleBatchExtractFromStoryboard}
         onAddClick={() => setShowAddModal(true)}
         onOpenClusterLog={() => setClusterLogOpen(true)}
         hasClusterLog={hasClusterLog}
         extractingFromStoryboard={extractingFromStoryboard}
+        batchExtracting={batchExtracting}
       />
 
       {error && (
@@ -231,41 +264,20 @@ export default function Tab1Assets({ projectId, episodeId, onGoToTab0 }: Tab1Ass
         </div>
       )}
 
-      {/* 提取资产弹窗 */}
-      {showExtractModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-          <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-md mx-4">
-            <h2 className="text-lg font-semibold mb-4">AI 提取资产</h2>
-            <p className="text-sm text-gray-400 mb-4">
-              从当前选中集数的剧本中提取角色、场景、道具，结果合并到资产库。
-            </p>
-            {!episodeId && (
-              <p className="text-sm text-red-400 mb-4">请先在顶部选择集数</p>
-            )}
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowExtractModal(false)}
-                className="flex-1 border border-gray-700 text-gray-300 text-sm px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors"
-              >
-                取消
-              </button>
-              <button
-                onClick={() => { setShowExtractModal(false); handleExtract() }}
-                disabled={!episodeId || extracting}
-                className="flex-1 bg-emerald-600 hover:bg-emerald-500 disabled:bg-gray-700 text-white text-sm px-4 py-2 rounded-lg transition-colors"
-              >
-                开始提取
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
       {/* 从分镜提取 - 装扮坍缩确认弹窗 */}
       {collapseViewData && (
         <CostumeCollapseView
           collapsedData={collapseViewData}
           onConfirm={handleCollapseConfirm}
           onCancel={() => setCollapseViewData(null)}
+        />
+      )}
+      {/* 全集批量提取 - 装扮坍缩确认弹窗 */}
+      {batchCollapseViewData && (
+        <CostumeCollapseView
+          collapsedData={batchCollapseViewData}
+          onConfirm={handleBatchCollapseConfirm}
+          onCancel={() => setBatchCollapseViewData(null)}
         />
       )}
     </div>
