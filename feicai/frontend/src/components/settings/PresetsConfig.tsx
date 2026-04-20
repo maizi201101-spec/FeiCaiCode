@@ -102,26 +102,34 @@ export default function PresetsConfig({ projectId }: PresetsConfigProps) {
       <div className="mb-6">
         <h2 className="text-lg font-medium text-gray-200 mb-2">系统提示词预设库</h2>
         <p className="text-sm text-gray-400">
-          管理分镜规划、视频提示词、特殊效果等预设
+          管理分镜规划、视频提示词、特殊效果等预设。
+          <span className="text-green-400 ml-1">● 接入 LLM</span> 表示该类别的激活预设内容会在「生成提示词」时注入 LLM 请求；
+          <span className="text-gray-500 ml-1">○ 未接入</span> 表示仅供参考，暂未传给 LLM。
         </p>
       </div>
 
       {/* 分类选择 */}
       <div className="bg-gray-900 rounded-lg border border-gray-700 p-4 mb-4">
         <div className="flex flex-wrap gap-2">
-          {(Object.keys(CATEGORY_LABELS) as PresetCategory[]).map(cat => (
-            <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              className={`px-3 py-2 rounded border text-sm ${
-                selectedCategory === cat
-                  ? 'bg-indigo-600 border-indigo-500 text-white'
-                  : 'bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700'
-              }`}
-            >
-              {CATEGORY_LABELS[cat]}
-            </button>
-          ))}
+          {(Object.keys(CATEGORY_LABELS) as PresetCategory[]).map(cat => {
+            const llmConnected = cat === 'video_prompt_style' || cat === 'special_effect'
+            return (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={`px-3 py-2 rounded border text-sm flex items-center gap-1.5 ${
+                  selectedCategory === cat
+                    ? 'bg-indigo-600 border-indigo-500 text-white'
+                    : 'bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700'
+                }`}
+              >
+                <span className={`text-xs ${llmConnected ? 'text-green-400' : 'text-gray-600'}`}>
+                  {llmConnected ? '●' : '○'}
+                </span>
+                {CATEGORY_LABELS[cat]}
+              </button>
+            )
+          })}
         </div>
       </div>
 

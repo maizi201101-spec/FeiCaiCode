@@ -19,6 +19,8 @@ from services.llm_client import call_llm
 from services.script_service import get_episode_info, get_project_path
 from services.shot_service import read_shots
 from services.asset_service import read_assets
+from services.preset_service import get_active_preset_content, get_active_special_effects
+from schemas.preset_schema import PresetCategory
 
 DB_PATH = Path(__file__).parent.parent / "feicai.db"
 
@@ -143,8 +145,18 @@ async def generate_prompts_by_ai(episode_id: int) -> PromptsCollection:
             "time_of_day": shot.time_of_day,
         })
 
+    # 读取激活的预设内容注入 LLM 提示
+    project_id = episode["project_id"]
+    video_style = await get_active_preset_content(project_id, PresetCategory.VIDEO_PROMPT_STYLE)
+    special_effects = await get_active_special_effects(project_id)
+    style_block = f"\n\n## 视频提示词风格\n{video_style}" if video_style else ""
+    effects_block = (
+        "\n\n## 全局特殊效果（追加到每个镜头视频提示词末尾）\n"
+        + "\n".join(f"- {e}" for e in special_effects)
+    ) if special_effects else ""
+
     # LLM Prompt
-    prompt = """你是一个专业的影视提示词生成专家。请根据以下分镜和资产信息，为每个镜头生成图片提示词和视频提示词。
+    prompt = f"""你是一个专业的影视提示词生成专家。请根据以下分镜和资产信息，为每个镜头生成图片提示词和视频提示词。{style_block}{effects_block}
 
 ## 资产清单
 """ + json.dumps(assets_info, ensure_ascii=False, indent=2) + """
@@ -184,16 +196,16 @@ async def generate_prompts_by_ai(episode_id: int) -> PromptsCollection:
 
 ## 输出格式
 ```json
-{
+{{
   "prompts": [
-    {
+    {{
       "shot_id": "01",
       "group_id": "G01",
       "image_prompt": "@人物1是林小满，@场景1是咖啡馆；中近景，人物偏左构图...",
-      "video_prompt": "【景别】中近景\n【运镜】缓慢推进\n..."
-    }
+      "video_prompt": "【景别】中近景\\n【运镜】缓慢推进\\n..."
+    }}
   ]
-}
+}}
 ```
 
 请严格按照 JSON 格式输出，不要添加任何额外文字。"""
