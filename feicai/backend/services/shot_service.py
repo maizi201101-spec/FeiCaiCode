@@ -12,6 +12,7 @@ import re
 from schemas.shots_schema import (
     Shot, ShotGroup, ShotsCollection, ShotUpdate, GroupUpdate,
     ShotType, ShotSize, CameraMove, SpeechLine, TimeRange,
+    AssetRefs, CharacterRef,
     get_duration_color
 )
 from services.llm_client import call_llm
@@ -251,7 +252,6 @@ async def plan_shots_by_ai(episode_id: int) -> ShotsCollection:
             # 解析 asset_refs
             asset_refs = None
             if "asset_refs" in s:
-                from schemas.shots_schema import AssetRefs, CharacterRef
                 asset_refs_data = s["asset_refs"]
                 asset_refs = AssetRefs(
                     characters=[CharacterRef(**c) for c in asset_refs_data.get("characters", [])],
@@ -342,6 +342,7 @@ async def update_shot_field(episode_id: int, shot_id: str, updates: ShotUpdate) 
         shot_size=update_data.get("shot_size", current_shot.shot_size),
         camera_move=update_data.get("camera_move", current_shot.camera_move),
         assets=update_data.get("assets", current_shot.assets),
+        asset_refs=current_shot.asset_refs,
         frame_action=update_data.get("frame_action", current_shot.frame_action),
         lighting=update_data.get("lighting", current_shot.lighting),
         screen_text=update_data.get("screen_text", current_shot.screen_text),
@@ -383,6 +384,7 @@ async def update_shot_group_membership(episode_id: int, shot_id: str, new_group_
         shot_size=current_shot.shot_size,
         camera_move=current_shot.camera_move,
         assets=current_shot.assets,
+        asset_refs=current_shot.asset_refs,
         frame_action=current_shot.frame_action,
         lighting=current_shot.lighting,
         screen_text=current_shot.screen_text,
