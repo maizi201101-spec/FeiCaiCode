@@ -155,14 +155,8 @@ async def generate_prompts_by_ai(episode_id: int) -> PromptsCollection:
         + "\n".join(f"- {e}" for e in special_effects)
     ) if special_effects else ""
 
-    # LLM Prompt
-    prompt = f"""你是一个专业的影视提示词生成专家。请根据以下分镜和资产信息，为每个镜头生成图片提示词和视频提示词。{style_block}{effects_block}
-
-## 资产清单
-""" + json.dumps(assets_info, ensure_ascii=False, indent=2) + """
-
-## 分镜结构
-""" + json.dumps(shots_info, ensure_ascii=False, indent=2) + """
+    # system prompt：角色 + 固定格式规则 + 激活的风格预设
+    system_prompt = f"""你是一个专业的影视提示词生成专家，负责为每个分镜头生成图片提示词和视频提示词。{style_block}
 
 ## 提示词格式要求
 
@@ -194,8 +188,7 @@ async def generate_prompts_by_ai(episode_id: int) -> PromptsCollection:
 4. 图片提示词用分号分隔，不加【】
 5. 视频提示词必须用【】字段格式
 
-## 输出格式
-```json
+## 输出格式（严格 JSON，不要添加任何额外文字）
 {{
   "prompts": [
     {{
@@ -205,12 +198,18 @@ async def generate_prompts_by_ai(episode_id: int) -> PromptsCollection:
       "video_prompt": "【景别】中近景\\n【运镜】缓慢推进\\n..."
     }}
   ]
-}}
-```
+}}"""
 
-请严格按照 JSON 格式输出，不要添加任何额外文字。"""
+    # user prompt：仅动态数据
+    prompt = f"""## 资产清单
+""" + json.dumps(assets_info, ensure_ascii=False, indent=2) + """
 
-    result = await call_llm(prompt, temperature=0.3, max_tokens=8000)
+## 分镜结构
+""" + json.dumps(shots_info, ensure_ascii=False, indent=2)
+    if effects_block:
+        prompt += effects_block
+
+    result = await call_llm(prompt, system_prompt, temperature=0.3, max_tokens=8000)
 
     # 解析 JSON
     json_match = re.search(r"\{[\s\S]*\}", result)

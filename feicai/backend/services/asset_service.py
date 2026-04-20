@@ -121,12 +121,9 @@ async def extract_raw_mentions_from_episode(
 
     script_content = script_file.read_text(encoding="utf-8")
 
-    prompt = f"""你是短剧剧本分析助手。请分析本集剧本，找出所有出现的角色、场景、道具。
+    system_prompt = """你是短剧剧本分析助手，负责从剧本中提取角色、场景、道具的原始提及。
 
-本集剧本：
-{script_content}
-
-任务要求（严格遵守）：
+任务规则（严格遵守）：
 1. 列出本集实际出现的所有角色、场景、关键道具
 2. 对每个实体，只记录以下内容：
    - name: 剧本中使用的名称（原文，不要改写）
@@ -137,23 +134,26 @@ async def extract_raw_mentions_from_episode(
 4. 【重要】不要分配编号或ID
 5. 【重要】raw_fragments 只抄录外观描述，不要抄录对话或动作
 
-输出 JSON（只输出 JSON，不要解释）：
+输出格式（只输出 JSON，不要解释）：
 ```json
-{{
-  "episode_number": {episode['number']},
+{
+  "episode_number": <集数>,
   "mentions": [
-    {{
+    {
       "name": "团团",
       "type": "character",
       "raw_fragments": ["清瘦苍白，掌心和膝盖都蹭破皮", "眼眶发红，从地上爬起来"],
       "context": "主角，后山寻找千年雪莲，摔倒受伤后找到雪莲，遭遇狼王"
-    }}
+    }
   ]
-}}
+}
 ```"""
 
+    prompt = f"""本集剧本（第 {episode['number']} 集）：
+{script_content}"""
+
     try:
-        result = await call_llm(prompt, temperature=0.1, max_tokens=2000)
+        result = await call_llm(prompt, system_prompt, temperature=0.1, max_tokens=2000)
     except ValueError as e:
         return {"episode_id": episode_id, "episode_number": episode["number"],
                 "status": "failed", "error": str(e)}
@@ -374,21 +374,21 @@ async def consolidate_entity_cluster(
 }"""
         rules = """【base_description 规则】只填道具的固定物理特征"""
 
-    prompt = f"""你是短剧资产档案整理师。以下是{type_label}「{name}」在各集中的原始描述记录。
-请根据所有集的信息，整理出稳定的基础档案（base）和状态变体（variants）。
-{existing_note}
+    system_prompt = f"""你是短剧资产档案整理师，负责整理{type_label}档案。
+请根据跨集原始描述，提炼稳定的基础档案（base）和状态变体（variants）。
+
 {rules}
 
-各集原始记录：
-{episodes_text}
-
-请输出该{type_label}的最终档案（只输出 JSON，不要解释）：
+输出格式（只输出 JSON，不要解释）：
 ```json
 {output_schema}
 ```"""
 
+    prompt = f"""{existing_note}各集原始记录（{type_label}「{name}」）：
+{episodes_text}"""
+
     try:
-        result = await call_llm(prompt, temperature=0.1, max_tokens=1500)
+        result = await call_llm(prompt, system_prompt, temperature=0.1, max_tokens=1500)
     except ValueError:
         return None
 

@@ -96,18 +96,7 @@ async def split_script_by_ai(
 ) -> ScriptSplitResponse:
     """调用 LLM 分析全集剧本并识别分割点"""
 
-    prompt = f"""你是一个专业的剧本分析助手。请分析以下全集剧本内容，识别各集的分割点。
-
-全集剧本共约 {len(content)} 字符，预期约 {episode_count} 集。
-
-请按以下格式输出分割结果（JSON 格式）：
-```json
-[
-  {"episode": 1, "content": "第一集完整剧本内容...", "marker": "第一集结束标记"},
-  {"episode": 2, "content": "第二集完整剧本内容...", "marker": "第二集开始标记"},
-  ...
-]
-```
+    system_prompt = """你是一个专业的剧本分析助手，负责将全集剧本按集数分割。
 
 分割规则：
 1. 通常每集约 800-1000 字
@@ -115,11 +104,20 @@ async def split_script_by_ai(
 3. 若无明确标题，按剧情自然断点分割（场景切换、时间跳跃）
 4. 确保每集内容完整，不截断对话或场景
 
-剧本内容：
-{content[:8000]}  # 限制长度避免超出 token
-"""
+输出格式（严格 JSON，不要添加任何额外文字）：
+```json
+[
+  {"episode": 1, "content": "第一集完整剧本内容...", "marker": "第一集结束标记"},
+  {"episode": 2, "content": "第二集完整剧本内容...", "marker": "第二集开始标记"}
+]
+```"""
 
-    result = await call_llm(prompt, temperature=0.3, max_tokens=4000)
+    prompt = f"""全集剧本共约 {len(content)} 字符，预期约 {episode_count} 集。
+
+剧本内容：
+{content[:8000]}"""
+
+    result = await call_llm(prompt, system_prompt, temperature=0.3, max_tokens=4000)
 
     # 解析 JSON 结果
     json_match = re.search(r"\[[\s\S]*\]", result)

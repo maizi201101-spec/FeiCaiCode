@@ -17,6 +17,7 @@ from schemas.shots_schema import (
 from services.llm_client import call_llm
 from services.script_service import get_episode_info, get_project_path
 from services.asset_service import read_assets
+from services.preset_service import get_active_preset_content, PresetCategory
 
 DB_PATH = Path(__file__).parent.parent / "feicai.db"
 
@@ -156,13 +157,12 @@ async def plan_shots_by_ai(episode_id: int) -> ShotsCollection:
     registry = CostumeRegistryService.load_registry(project_path)
     costume_context = CostumeRegistryService.to_llm_context(registry)
 
-    # LLM Prompt（使用字符串拼接避免 f-string 嵌套问题）
-    prompt = """你是一个专业的影视分镜规划师。请分析以下剧本内容，生成结构化的分镜数据。
-
-## 剧本内容
-""" + script_content[:6000] + """
-
-""" + (costume_context if costume_context else "") + """
+    # 读取激活的分镜风格预设（无则使用默认角色设定）
+    project_id = episode["project_id"]
+    storyboard_style = await get_active_preset_content(project_id, PresetCategory.STORYBOARD_STYLE)
+    default_role = "你是一个专业的影视分镜规划师，负责将剧本内容拆解为结构化分镜数据。"
+    system_prompt = storyboard_style if storyboard_style else default_role
+    system_prompt += """
 
 ## 分镜规划规则
 1. 以「镜头组」为顶层结构，每组为一个视频生成单元
@@ -178,7 +178,12 @@ async def plan_shots_by_ai(episode_id: int) -> ShotsCollection:
 - props: ["道具名"] — 字符串数组
 - shot_annotations: "" — 镜头级一次性外观变化（用 [] 括号格式，如「[张三脸上有血迹]」）
 
-## 输出格式（JSON）
+## 枚举值参考
+镜头类型: 空境、对话、行动冲突、打斗、调度
+景别: 大远景、远景、全景、中景、中近景、近景、特写
+运镜: 固定、缓慢推进、快速推进、缓慢拉开、快速拉开、缓慢横移、缓慢左摇、缓慢右摇、跟随、手持跟随、缓慢升起、缓慢下降、缓慢环绕、快速环绕、快速摇摄
+
+## 输出格式（严格 JSON，不要添加任何额外文字）
 {
   "shots": [
     {
@@ -209,16 +214,14 @@ async def plan_shots_by_ai(episode_id: int) -> ShotsCollection:
       "scene_context": "场景说明"
     }
   ]
-}
+}"""
 
-## 枚举值参考
-镜头类型: 空境、对话、行动冲突、打斗、调度
-景别: 大远景、远景、全景、中景、中近景、近景、特写
-运镜: 固定、缓慢推进、快速推进、缓慢拉开、快速拉开、缓慢横移、缓慢左摇、缓慢右摇、跟随、手持跟随、缓慢升起、缓慢下降、缓慢环绕、快速环绕、快速摇摄
+    # LLM User Prompt（仅包含动态数据）
+    prompt = "## 剧本内容\n" + script_content[:6000]
+    if costume_context:
+        prompt += "\n\n" + costume_context
 
-请严格按照 JSON 格式输出，不要添加任何额外文字。"""
-
-    result = await call_llm(prompt, temperature=0.3, max_tokens=8000)
+    result = await call_llm(prompt, system_prompt, temperature=0.3, max_tokens=8000)
 
     # 解析 JSON
     json_match = re.search(r"\{[\s\S]*\}", result)
