@@ -14,13 +14,15 @@ interface AssetVariantRowProps {
   projectId: number
   assetType: AssetType
   assetId: string
+  zoomEnabled?: boolean
 }
 
-export default function AssetVariantRow({ variant, projectId, assetType, assetId }: AssetVariantRowProps) {
+export default function AssetVariantRow({ variant, projectId, assetType, assetId, zoomEnabled = true }: AssetVariantRowProps) {
   const [images, setImages] = useState<AssetImage[]>([])
   const [loadedImages, setLoadedImages] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [generating, setGenerating] = useState(false)
+  const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // variant 使用 assetId 作为图片容器（variant 的图存在同一资产目录下，用 variant_id 区分暂不支持）
@@ -87,6 +89,9 @@ export default function AssetVariantRow({ variant, projectId, assetType, assetId
       <div
         className="shrink-0 bg-gray-900 rounded flex items-center justify-center overflow-hidden"
         style={{ width: 80, height: 56 }}
+        onMouseEnter={(e) => latestImageUrl && zoomEnabled && setHoverPos({ x: e.clientX, y: e.clientY })}
+        onMouseMove={(e) => latestImageUrl && zoomEnabled && setHoverPos({ x: e.clientX, y: e.clientY })}
+        onMouseLeave={() => setHoverPos(null)}
       >
         {latestImageUrl ? (
           <img src={latestImageUrl} alt={variant.variant_name} className="w-full h-full object-contain" />
@@ -125,5 +130,20 @@ export default function AssetVariantRow({ variant, projectId, assetType, assetId
         </button>
       </div>
     </div>
+
+    {/* 鼠标悬浮大图预览 */}
+    {hoverPos && latestImageUrl && (
+      <div
+        className="fixed z-[9999] pointer-events-none"
+        style={{ left: hoverPos.x + 16, top: hoverPos.y - 90 }}
+      >
+        <img
+          src={latestImageUrl}
+          alt={variant.variant_name}
+          className="rounded-lg shadow-2xl border border-gray-600 object-contain bg-gray-900"
+          style={{ width: 240, height: 135 }}
+        />
+      </div>
+    )}
   )
 }

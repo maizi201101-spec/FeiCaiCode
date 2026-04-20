@@ -19,6 +19,7 @@ interface AssetCardProps {
   onDelete: (assetType: AssetType, assetId: string) => Promise<void>
   forceExpanded?: boolean | null
   forceVariantsExpanded?: boolean | null
+  zoomEnabled?: boolean
 }
 
 const TYPE_LABEL = { character: '角色', scene: '场景', prop: '道具' } as const
@@ -28,7 +29,7 @@ const TYPE_COLOR = {
   prop: 'bg-emerald-900/50 text-emerald-300',
 } as const
 
-export default function AssetCard({ asset, projectId, onUpdate, onDelete, forceExpanded, forceVariantsExpanded }: AssetCardProps) {
+export default function AssetCard({ asset, projectId, onUpdate, onDelete, forceExpanded, forceVariantsExpanded, zoomEnabled = true }: AssetCardProps) {
   const [expanded, setExpanded] = useState(false)
   const [editing, setEditing] = useState(false)
   const [editedName, setEditedName] = useState(asset.name)
@@ -168,8 +169,8 @@ export default function AssetCard({ asset, projectId, onUpdate, onDelete, forceE
           <div
             className="relative shrink-0 bg-gray-900 flex items-center justify-center overflow-hidden cursor-pointer"
             style={{ width: 80, height: 56 }}
-            onMouseEnter={(e) => primaryImageUrl && setHoverPos({ x: e.clientX, y: e.clientY })}
-            onMouseMove={(e) => primaryImageUrl && setHoverPos({ x: e.clientX, y: e.clientY })}
+            onMouseEnter={(e) => primaryImageUrl && zoomEnabled && setHoverPos({ x: e.clientX, y: e.clientY })}
+            onMouseMove={(e) => primaryImageUrl && zoomEnabled && setHoverPos({ x: e.clientX, y: e.clientY })}
             onMouseLeave={() => setHoverPos(null)}
           >
             {loadingImages ? (
@@ -406,6 +407,7 @@ export default function AssetCard({ asset, projectId, onUpdate, onDelete, forceE
                   projectId={projectId}
                   assetType={asset.asset_type}
                   assetId={asset.asset_id}
+                  zoomEnabled={zoomEnabled}
                 />
               ))}
               <button

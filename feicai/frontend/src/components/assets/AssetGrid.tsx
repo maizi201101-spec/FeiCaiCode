@@ -13,6 +13,7 @@ interface AssetGridProps {
 export default function AssetGrid({ assets, projectId, onUpdate, onDelete, onAddClick }: AssetGridProps) {
   const [globalExpanded, setGlobalExpanded] = useState<boolean | null>(null)
   const [globalVariantsExpanded, setGlobalVariantsExpanded] = useState<boolean | null>(null)
+  const [zoomEnabled, setZoomEnabled] = useState(true)
 
   const hasVariants = assets.some((a) => a.variants.length > 0)
 
@@ -77,6 +78,13 @@ export default function AssetGrid({ assets, projectId, onUpdate, onDelete, onAdd
             </button>
           </>
         )}
+        <span className="ml-4 text-gray-600">|</span>
+        <button
+          onClick={() => setZoomEnabled(!zoomEnabled)}
+          className={`hover:text-gray-300 transition-colors ${zoomEnabled ? 'text-indigo-400' : ''}`}
+        >
+          {zoomEnabled ? '放大显示 ✓' : '放大显示'}
+        </button>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 p-4">
@@ -89,6 +97,7 @@ export default function AssetGrid({ assets, projectId, onUpdate, onDelete, onAdd
             onDelete={onDelete}
             forceExpanded={globalExpanded}
             forceVariantsExpanded={globalVariantsExpanded}
+            zoomEnabled={zoomEnabled}
           />
         ))}
         {/* 新增资产卡片 */}
