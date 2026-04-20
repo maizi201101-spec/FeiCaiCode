@@ -112,7 +112,7 @@ export default function PresetsConfig({ projectId }: PresetsConfigProps) {
       <div className="bg-gray-900 rounded-lg border border-gray-700 p-4 mb-4">
         <div className="flex flex-wrap gap-2">
           {(Object.keys(CATEGORY_LABELS) as PresetCategory[]).map(cat => {
-            const llmConnected = cat === 'video_prompt_style' || cat === 'special_effect'
+            const llmConnected = cat === 'storyboard_style' || cat === 'video_prompt_style' || cat === 'special_effect'
             return (
               <button
                 key={cat}
