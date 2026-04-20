@@ -128,7 +128,7 @@ async def extract_raw_mentions_from_episode(
     default_role = "你是短剧剧本分析助手，负责从剧本中提取角色、场景、道具的原始提及。"
     role_line = extraction_style if extraction_style else default_role
 
-    system_prompt = f"""{role_line}
+    system_prompt = role_line + """
 
 任务规则（严格遵守）：
 1. 列出本集实际出现的所有角色、场景、关键道具
