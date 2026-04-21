@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { type Shot } from '../../api/shots'
 import { type Prompt, type GroupPrompt } from '../../api/prompts'
 import { type Asset, getImageUrl } from '../../api/assets'
@@ -16,7 +16,7 @@ interface GroupCentralWorkAreaProps {
   onResetGroupPrompt: () => void
   onConfirmGroupPrompt: () => void
   selectedReferenceImages: string[]
-  onToggleReference: (assetId: string, imageUrl: string) => void
+  onToggleReference: (imageUrl: string) => void
   anchorDeclaration: string
   settings: any
   duration: number
@@ -32,7 +32,6 @@ interface GroupCentralWorkAreaProps {
 
 export default function GroupCentralWorkArea({
   projectId,
-  episodeId,
   currentGroupId,
   groupShots,
   groupPrompts,
@@ -45,7 +44,6 @@ export default function GroupCentralWorkArea({
   selectedReferenceImages,
   onToggleReference,
   anchorDeclaration,
-  settings,
   duration,
   setDuration,
   resolution,
@@ -77,9 +75,9 @@ export default function GroupCentralWorkArea({
   const [editingPrompt, setEditingPrompt] = useState(displayPrompt)
 
   // 当 displayPrompt 变化时更新
-  useState(() => {
+  useEffect(() => {
     setEditingPrompt(displayPrompt)
-  })
+  }, [displayPrompt])
 
   const totalDuration = groupShots.reduce((sum, s) => sum + s.duration, 0)
 
@@ -155,7 +153,7 @@ export default function GroupCentralWorkArea({
             return (
               <button
                 key={asset.asset_id}
-                onClick={() => imageUrl && onToggleReference(asset.asset_id, imageUrl)}
+                onClick={() => imageUrl && onToggleReference(imageUrl)}
                 disabled={!imageUrl}
                 className={`aspect-square rounded border-2 overflow-hidden transition-all ${
                   isSelected

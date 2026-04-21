@@ -1,13 +1,13 @@
 import { useState, useEffect, useMemo } from 'react'
 import { usePrompts } from '../../hooks/usePrompts'
-import { useAssembly } from '../../hooks/useAssembly'
 import { useShots } from '../../hooks/useShots'
 import { useAssets } from '../../hooks/useAssets'
 import { useGlobalSettings } from '../../hooks/useGlobalSettings'
-import { useVideoGeneration } from '../../hooks/useVideoGeneration'
+import { updateGroupPrompt, resetGroupPrompt } from '../../api/prompts'
+import { getImageUrl } from '../../api/assets'
 import ShotNavPanel from '../../components/assembly/ShotNavPanel'
-import CentralWorkArea from '../../components/assembly/CentralWorkArea'
-import ParamsPanel from '../../components/assembly/ParamsPanel'
+import GroupCentralWorkArea from '../../components/assembly/GroupCentralWorkArea'
+import PreviewDrawer from '../../components/assembly/PreviewDrawer'
 import ExportPromptsButton from '../../components/common/ExportPromptsButton'
 
 interface Tab3AssemblyProps {
@@ -18,159 +18,273 @@ interface Tab3AssemblyProps {
   onFocusHandled?: () => void
 }
 
-export default function Tab3Assembly({ episodeId, projectId, revisionShotIds = [], focusGroupId = null, onFocusHandled }: Tab3AssemblyProps) {
-  const [globalPrompt, setGlobalPrompt] = useState('')
+export default function Tab3Assembly({
+  episodeId,
+  projectId,
+  revisionShotIds = [],
+  focusGroupId = null,
+  onFocusHandled
+}: Tab3AssemblyProps) {
+  const [currentGroupId, setCurrentGroupId] = useState<string | null>(null)
+  const [selectedReferenceImages, setSelectedReferenceImages] = useState<string[]>([])
+  const [showPreview, setShowPreview] = useState(false)
+  const [editingPrompt, setEditingPrompt] = useState('')
+
+  // 生成参数
+  const [duration, setDuration] = useState(12)
+  const [resolution, setResolution] = useState('1080p')
+  const [ratio, setRatio] = useState('9:16')
 
   // Hooks
-  const { prompts, loading: promptsLoading, generating, generatePrompts, editPrompt, confirmPrompt } = usePrompts(episodeId)
+  const { prompts, promptsCollection, loading: promptsLoading, generating, generatePrompts, refetch } = usePrompts(episodeId)
   const { shotsCollection, loading: shotsLoading } = useShots(episodeId)
   const { allAssets, loading: assetsLoading } = useAssets(projectId)
   const { settings } = useGlobalSettings(projectId)
-  const videoGen = useVideoGeneration(episodeId)
 
-  // Assembly state
-  const assembly = useAssembly(prompts, globalPrompt)
-
-  // Sync global prompt
-  useEffect(() => {
-    if (settings?.global_prompt) setGlobalPrompt(settings.global_prompt)
-  }, [settings])
-
-  // 切换镜头时加载视频版本
-  useEffect(() => {
-    if (assembly.currentShotId && assembly.mode === 'video') {
-      videoGen.fetchVersions(assembly.currentShotId)
-    } else {
-      videoGen.clearVersions()
-    }
-  }, [assembly.currentShotId, assembly.mode])
-
-  // 按类型分组资产
-  const groupedAssets = useMemo(() => ({
-    characters: allAssets.filter(a => a.asset_type === 'character'),
-    scenes: allAssets.filter(a => a.asset_type === 'scene'),
-    props: allAssets.filter(a => a.asset_type === 'prop'),
-  }), [allAssets])
-
-  // Loading state
   const isLoading = promptsLoading || shotsLoading || assetsLoading
 
-  // Handlers
-  const handleEditPrompt = async (shotId: string, imagePrompt?: string, videoPrompt?: string) => {
-    try { await editPrompt(shotId, { image_prompt: imagePrompt, video_prompt: videoPrompt }) }
-    catch (e) { console.error('更新提示词失败:', e) }
-  }
-
-  const handleConfirmPrompt = async (shotId: string) => {
-    try { await confirmPrompt(shotId) }
-    catch (e) { console.error('确认提示词失败:', e) }
-  }
-
-  // 视频生成 handler
-  const handleGenerateVideo = async () => {
-    if (!assembly.currentShotId || !currentPrompt) return
-    try {
-      await videoGen.submitGeneration({
-        shot_id: assembly.currentShotId,
-        video_prompt: finalVideoPrompt,
-        reference_images: assembly.referenceImages,
-        anchor_declaration: anchorDeclaration,
-        model: settings?.default_model || 'seedance2.0',
-        duration: settings?.default_duration || 4,
-        resolution: settings?.default_resolution || '1080p',
-      })
-    } catch (e) { console.error('视频生成失败:', e) }
-  }
-
-  // Current data
-  const currentPrompt = prompts.find(p => p.shot_id === assembly.currentShotId)
-  const currentShot = shotsCollection?.shots.find(s => s.shot_id === assembly.currentShotId)
+  // 当前组数据
   const groups = shotsCollection?.groups || []
-  const currentGroup = groups.find(g => g.group_id === assembly.currentGroupId) || null
+  const currentGroup = groups.find(g => g.group_id === currentGroupId) || null
   const currentGroupShots = currentGroup
     ? shotsCollection!.shots.filter(s => currentGroup.shots.includes(s.shot_id))
     : []
-  const finalVideoPrompt = assembly.currentShotId ? assembly.getFinalVideoPrompt(assembly.currentShotId) : ''
-  const anchorDeclaration = assembly.referenceImages.map((img, i) => {
-    const asset = allAssets.find(a => a.images?.[0] === img)
-    return asset ? `图${i + 1}是${asset.name}` : null
-  }).filter(Boolean).join('，')
+  const currentGroupPrompts = prompts.filter(p => p.group_id === currentGroupId)
+  const savedGroupPrompt = promptsCollection?.group_prompts?.find(gp => gp.group_id === currentGroupId)
 
-  if (isLoading) return <div className="flex h-full items-center justify-center text-gray-400">加载中...</div>
-  if (!shotsCollection?.shots.length) return <div className="flex h-full items-center justify-center text-gray-400">无分镜数据</div>
-  if (!prompts.length) return (
-    <div className="flex h-full flex-col items-center justify-center gap-4">
-      <div className="text-gray-400">尚未生成提示词</div>
-      <button onClick={generatePrompts} disabled={generating} className="px-4 py-2 bg-blue-500 text-white rounded">{generating ? '生成中...' : '生成提示词'}</button>
-    </div>
-  )
+  // 提取本组用到的资产
+  const groupAssets = useMemo(() => {
+    if (!currentGroupShots.length) return []
+
+    const assetIds = new Set<string>()
+    currentGroupShots.forEach(shot => {
+      if (shot.asset_refs) {
+        // 从角色名找 asset_id
+        shot.asset_refs.characters.forEach(c => {
+          const asset = allAssets.find(a => a.name === c.name && a.asset_type === 'character')
+          if (asset) assetIds.add(asset.asset_id)
+        })
+        // 从场景名找 asset_id
+        shot.asset_refs.scenes.forEach(sceneName => {
+          const asset = allAssets.find(a => a.name === sceneName && a.asset_type === 'scene')
+          if (asset) assetIds.add(asset.asset_id)
+        })
+        // 从道具名找 asset_id
+        shot.asset_refs.props.forEach(propName => {
+          const asset = allAssets.find(a => a.name === propName && a.asset_type === 'prop')
+          if (asset) assetIds.add(asset.asset_id)
+        })
+      }
+    })
+
+    return allAssets.filter(a => assetIds.has(a.asset_id))
+  }, [currentGroupShots, allAssets])
+
+  // 生成锚定声明
+  const anchorDeclaration = useMemo(() => {
+    if (selectedReferenceImages.length === 0) return ''
+
+    return selectedReferenceImages.map((imgUrl, i) => {
+      const asset = allAssets.find(a => {
+        const url = a.images[0] ? getImageUrl(projectId, a.asset_type, a.asset_id, 1) : null
+        return url === imgUrl
+      })
+      return asset ? `图${i + 1}是${asset.name}` : null
+    }).filter(Boolean).join('，')
+  }, [selectedReferenceImages, allAssets, projectId])
+
+  // 初始化：选中第一个组
+  useEffect(() => {
+    if (groups.length > 0 && !currentGroupId) {
+      setCurrentGroupId(groups[0].group_id)
+    }
+  }, [groups, currentGroupId])
+
+  // 焦点处理
+  useEffect(() => {
+    if (focusGroupId && focusGroupId !== currentGroupId) {
+      setCurrentGroupId(focusGroupId)
+      if (onFocusHandled) onFocusHandled()
+    }
+  }, [focusGroupId, currentGroupId, onFocusHandled])
+
+  // 更新时长默认值
+  useEffect(() => {
+    if (currentGroup) {
+      setDuration(Math.ceil(currentGroup.total_duration))
+    }
+  }, [currentGroup])
+
+  // Handlers
+  const handleSelectGroup = (groupId: string) => {
+    setCurrentGroupId(groupId)
+    setSelectedReferenceImages([])
+  }
+
+  const handleToggleReference = (imageUrl: string) => {
+    if (selectedReferenceImages.includes(imageUrl)) {
+      setSelectedReferenceImages(prev => prev.filter(img => img !== imageUrl))
+    } else if (selectedReferenceImages.length < 6) {
+      setSelectedReferenceImages(prev => [...prev, imageUrl])
+    }
+  }
+
+  const handleSaveGroupPrompt = async () => {
+    if (!currentGroupId) return
+
+    try {
+      const referenceAssetIds = selectedReferenceImages.map(imgUrl => {
+        const asset = allAssets.find(a => {
+          const url = a.images[0] ? getImageUrl(projectId, a.asset_type, a.asset_id, 1) : null
+          return url === imgUrl
+        })
+        return asset?.asset_id
+      }).filter(Boolean) as string[]
+
+      await updateGroupPrompt(episodeId, currentGroupId, {
+        combined_video_prompt: editingPrompt,
+        reference_asset_ids: referenceAssetIds
+      })
+
+      await refetch()
+      alert('保存成功')
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '保存失败')
+    }
+  }
+
+  const handleResetGroupPrompt = async () => {
+    if (!currentGroupId) return
+    if (!confirm('确定要重置为自动拼接吗？')) return
+
+    try {
+      await resetGroupPrompt(episodeId, currentGroupId)
+      await refetch()
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '重置失败')
+    }
+  }
+
+  const handleConfirmGroupPrompt = async () => {
+    if (!currentGroupId) return
+
+    try {
+      await updateGroupPrompt(episodeId, currentGroupId, {
+        combined_video_prompt: editingPrompt,
+        confirmed: true
+      })
+      await refetch()
+      alert('确认成功')
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '确认失败')
+    }
+  }
+
+  const handleGenerateVideo = async () => {
+    alert('视频生成功能待接入 Dreamina CLI')
+  }
+
+  if (isLoading) {
+    return <div className="flex h-full items-center justify-center text-gray-400">加载中...</div>
+  }
+
+  if (!shotsCollection?.shots.length) {
+    return <div className="flex h-full items-center justify-center text-gray-400">无分镜数据</div>
+  }
+
+  if (!prompts.length) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-4">
+        <div className="text-gray-400">尚未生成提示词</div>
+        <button
+          onClick={generatePrompts}
+          disabled={generating}
+          className="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50"
+        >
+          {generating ? '生成中...' : '生成提示词'}
+        </button>
+      </div>
+    )
+  }
+
+  if (!currentGroupId) {
+    return <div className="flex h-full items-center justify-center text-gray-400">请选择一个组</div>
+  }
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
       {/* 顶部工具栏 */}
       <div className="flex items-center justify-between px-2 py-1 border-b border-gray-800 bg-gray-900">
         <div className="text-sm text-gray-400">
-          提示词装配与视频生成
+          组级视频生成
         </div>
         <ExportPromptsButton episodeId={episodeId} projectId={projectId} />
       </div>
+
       <div className="flex flex-1 min-h-0 gap-2 p-2">
-      <div className="w-[15%] min-w-[180px] border border-gray-800 rounded bg-gray-900 overflow-hidden">
-        <ShotNavPanel
-          shots={shotsCollection?.shots || []}
-          prompts={prompts}
-          currentShotId={assembly.currentShotId}
-          currentGroupId={assembly.currentGroupId}
-          onSelectShot={assembly.selectShot}
-          onSelectGroup={assembly.selectGroup}
-          revisionShotIds={revisionShotIds}
-          focusGroupId={focusGroupId}
-          onFocusHandled={onFocusHandled}
-        />
-      </div>
-      <div className="w-[55%] border border-gray-800 rounded bg-gray-900 overflow-hidden flex flex-col">
-        <CentralWorkArea
-          mode={assembly.mode}
-          onModeChange={assembly.setMode}
-          currentShot={currentShot}
-          currentPrompt={currentPrompt}
-          allAssets={allAssets}
-          groupedAssets={groupedAssets}
+        {/* 左侧导航 */}
+        <div className="w-[18%] min-w-[180px] border border-gray-800 rounded bg-gray-900 overflow-hidden">
+          <ShotNavPanel
+            shots={shotsCollection?.shots || []}
+            prompts={prompts}
+            currentShotId={null}
+            currentGroupId={currentGroupId}
+            onSelectShot={() => {}}
+            onSelectGroup={handleSelectGroup}
+            revisionShotIds={revisionShotIds}
+            focusGroupId={focusGroupId}
+            onFocusHandled={onFocusHandled}
+          />
+        </div>
+
+        {/* 中央工作区 */}
+        <GroupCentralWorkArea
           projectId={projectId}
-          onEditPrompt={handleEditPrompt}
-          onConfirm={handleConfirmPrompt}
-          specialPrompts={assembly.specialPrompts}
-          onAddSpecial={assembly.addSpecialPrompt}
-          onRemoveSpecial={assembly.removeSpecialPrompt}
-          currentGroupId={assembly.currentGroupId}
-          currentGroupShots={currentGroupShots}
-          currentGroup={currentGroup}
-          allPrompts={prompts}
-          shotIds={shotsCollection?.shots.map(s => s.shot_id) || []}
-          videoVersions={videoGen.versions}
-          currentVersionId={videoGen.currentVersionId}
-          onSelectVersion={videoGen.selectVersion}
-          onMarkApproved={videoGen.markApproved}
-          onMarkRejected={videoGen.markRejected}
-          videoGenerating={videoGen.generating}
-        />
-      </div>
-      <div className="w-[30%] min-w-[280px] border border-gray-800 rounded bg-gray-900 overflow-hidden">
-        <ParamsPanel
-          projectId={projectId}
+          episodeId={episodeId}
+          currentGroupId={currentGroupId}
+          groupShots={currentGroupShots}
+          groupPrompts={currentGroupPrompts}
+          savedGroupPrompt={savedGroupPrompt}
+          groupAssets={groupAssets}
+          onEditGroupPrompt={setEditingPrompt}
+          onSaveGroupPrompt={handleSaveGroupPrompt}
+          onResetGroupPrompt={handleResetGroupPrompt}
+          onConfirmGroupPrompt={handleConfirmGroupPrompt}
+          selectedReferenceImages={selectedReferenceImages}
+          onToggleReference={handleToggleReference}
+          anchorDeclaration={anchorDeclaration}
           settings={settings}
-          referenceImages={assembly.referenceImages}
-          onSetReferenceImages={assembly.setReferenceImages}
-          globalPrompt={globalPrompt}
-          finalVideoPrompt={finalVideoPrompt}
-          currentShotId={assembly.currentShotId}
-          currentGroup={currentGroup}
-          groupedAssets={groupedAssets}
+          duration={duration}
+          setDuration={setDuration}
+          resolution={resolution}
+          setResolution={setResolution}
+          ratio={ratio}
+          setRatio={setRatio}
           onGenerateVideo={handleGenerateVideo}
-          videoGenerating={videoGen.generating}
+          generating={false}
+          onShowPreview={() => setShowPreview(true)}
         />
       </div>
-    </div>
+
+      {/* 抽屉预览 */}
+      <PreviewDrawer
+        open={showPreview}
+        onClose={() => setShowPreview(false)}
+        combinedPrompt={editingPrompt}
+        anchorDeclaration={anchorDeclaration}
+        globalPrompt={settings?.global_prompt || ''}
+        settings={{
+          default_model: settings?.default_model || 'seedance2.0',
+          default_duration: duration,
+          default_resolution: resolution,
+          default_ratio: ratio
+        }}
+        duration={duration}
+        resolution={resolution}
+        ratio={ratio}
+        onGenerate={handleGenerateVideo}
+        generating={false}
+      />
     </div>
   )
 }
