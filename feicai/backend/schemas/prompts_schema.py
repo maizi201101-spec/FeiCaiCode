@@ -28,6 +28,14 @@ class GroupPrompt(BaseModel):
     last_auto_generated: Optional[str] = None  # 最后一次自动生成的时间戳
 
 
+class SpecialPrompt(BaseModel):
+    """特殊提示词配置（第2块）"""
+    id: str                   # 配置ID
+    content: str              # 提示词内容
+    scope: str                # 作用范围：shot/group/episode/selected
+    target_ids: List[str] = [] # 目标镜头/组ID列表（仅 selected 时使用）
+
+
 class PromptsCollection(BaseModel):
     """提示词集合（prompts.json 根对象）"""
     episode_id: int
@@ -77,11 +85,3 @@ class GlobalSettings(BaseModel):
 
     # 分镜规划并发数（1/2/3）
     plan_concurrency: int = 1
-
-
-class SpecialPrompt(BaseModel):
-    """特殊提示词配置（第2块）"""
-    id: str                   # 配置ID
-    content: str              # 提示词内容
-    scope: str                # 作用范围：shot/group/episode/selected
-    target_ids: List[str] = [] # 目标镜头/组ID列表（仅 selected 时使用）
