@@ -20,3 +20,4 @@
 - [Tailwind CSS 类冲突与布局约束遗漏](tailwind-css-class-conflicts.md) — block/flex 混用导致布局异常，高度约束链断裂
 - [React State 依赖与全局控制模式](react-state-dependency-patterns.md) — useEffect 依赖遗漏 + force prop 全局控制模式
 - [数据显示格式化缺失](data-display-formatting.md) — 浮点数未格式化直接渲染，需统一 toFixed 处理
+- [用户确认的指令被静默打折执行](silent-discount-on-confirmed-instructions.md) — AI 自行裁量"已覆盖"跳过部分内容，未完整执行用户确认的指令
