@@ -15,6 +15,21 @@ from schemas.prompts_schema import PromptsCollection
 from schemas.shots_schema import ShotsCollection
 
 
+def _fmt_speech(speech_list) -> str:
+    if not speech_list:
+        return ""
+    parts = []
+    for sp in speech_list:
+        speaker = sp.speaker or ""
+        text = sp.text or ""
+        parts.append(f"{speaker}: \"{text}\"" if speaker else text)
+    return " / ".join(parts)
+
+
+def _enum_val(v) -> str:
+    return v.value if hasattr(v, "value") else (v or "")
+
+
 async def export_prompts_csv(
     episode_id: int,
     scope: str = "episode",
@@ -67,11 +82,11 @@ async def export_prompts_csv(
     for shot in shots.shots:
         shot_map[shot.shot_id] = {
             "shot_number": shot.shot_id,
-            "shot_type": shot.shot_type or "",
-            "shot_size": shot.shot_size or "",
-            "camera_move": shot.camera_move or "",
+            "shot_type": _enum_val(shot.shot_type),
+            "shot_size": _enum_val(shot.shot_size),
+            "camera_move": _enum_val(shot.camera_move),
             "screen_text": shot.screen_text or "",
-            "speech": shot.speech or "",
+            "speech": _fmt_speech(shot.speech),
             "duration": shot.duration or "",
         }
 
@@ -216,13 +231,14 @@ async def export_prompts_markdown(
                 f.write(f"### {prompt.shot_id}\n\n")
 
                 if shot:
-                    f.write(f"- 类型：{shot.shot_type or '未知'}\n")
-                    f.write(f"- 景别：{shot.shot_size or '未知'}\n")
-                    f.write(f"- 运镜：{shot.camera_move or '未知'}\n")
+                    f.write(f"- 类型：{_enum_val(shot.shot_type)}\n")
+                    f.write(f"- 景别：{_enum_val(shot.shot_size)}\n")
+                    f.write(f"- 运镜：{_enum_val(shot.camera_move)}\n")
                     if shot.duration:
                         f.write(f"- 时长：{shot.duration}秒\n")
-                    if shot.speech:
-                        f.write(f"- 台词：{shot.speech}\n")
+                    speech_str = _fmt_speech(shot.speech)
+                    if speech_str:
+                        f.write(f"- 台词：{speech_str}\n")
                     f.write("\n")
 
                 f.write("**视频提示词：**\n\n")
@@ -291,13 +307,13 @@ async def export_all_episodes_prompts_csv(project_id: int) -> str:
                     "episode": episode_number,
                     "group_id": prompt.group_id,
                     "shot_id": prompt.shot_id,
-                    "shot_type": shot.shot_type if shot else "",
-                    "shot_size": shot.shot_size if shot else "",
-                    "camera_move": shot.camera_move if shot else "",
+                    "shot_type": _enum_val(shot.shot_type) if shot else "",
+                    "shot_size": _enum_val(shot.shot_size) if shot else "",
+                    "camera_move": _enum_val(shot.camera_move) if shot else "",
                     "duration": shot.duration if shot else "",
                     "video_prompt": prompt.video_prompt,
                     "image_prompt": prompt.image_prompt,
-                    "speech": shot.speech if shot else "",
+                    "speech": _fmt_speech(shot.speech) if shot and shot.speech else "",
                     "confirmed": prompt.confirmed,
                     "edited": prompt.edited,
                 })
