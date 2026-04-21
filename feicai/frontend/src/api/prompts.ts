@@ -10,15 +10,31 @@ export interface Prompt {
   confirmed: boolean
 }
 
+export interface GroupPrompt {
+  group_id: string
+  combined_video_prompt: string
+  reference_asset_ids: string[]
+  edited: boolean
+  confirmed: boolean
+  last_auto_generated?: string
+}
+
 export interface PromptsCollection {
   episode_id: number
   prompts: Prompt[]
+  group_prompts: GroupPrompt[]
   generated_at?: string
 }
 
 export interface PromptUpdatePayload {
   image_prompt?: string
   video_prompt?: string
+  confirmed?: boolean
+}
+
+export interface GroupPromptUpdatePayload {
+  combined_video_prompt: string
+  reference_asset_ids?: string[]
   confirmed?: boolean
 }
 
@@ -110,6 +126,33 @@ export async function confirmPrompt(episodeId: number, shotId: string): Promise<
     throw new Error(err.detail || '确认失败')
   }
   return res.json()
+}
+
+export async function updateGroupPrompt(
+  episodeId: number,
+  groupId: string,
+  updates: GroupPromptUpdatePayload
+): Promise<GroupPrompt> {
+  const res = await fetch(`${BASE}/episodes/${episodeId}/prompts/groups/${groupId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updates),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || '更新组级提示词失败')
+  }
+  return res.json()
+}
+
+export async function resetGroupPrompt(episodeId: number, groupId: string): Promise<void> {
+  const res = await fetch(`${BASE}/episodes/${episodeId}/prompts/groups/${groupId}`, {
+    method: 'DELETE',
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || '重置失败')
+  }
 }
 
 // 全局设置

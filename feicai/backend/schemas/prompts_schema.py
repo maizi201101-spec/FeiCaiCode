@@ -17,10 +17,21 @@ class Prompt(BaseModel):
     confirmed: bool = False # 是否人工确认
 
 
+class GroupPrompt(BaseModel):
+    """组级视频提示词（仅在用户编辑后持久化）"""
+    group_id: str
+    combined_video_prompt: str  # 组合后的完整视频提示词
+    reference_asset_ids: List[str] = []  # 该组引用的资产ID列表（去重）
+    edited: bool = False        # 是否手动编辑过
+    confirmed: bool = False     # 是否确认
+    last_auto_generated: Optional[str] = None  # 最后一次自动生成的时间戳
+
+
 class PromptsCollection(BaseModel):
     """提示词集合（prompts.json 根对象）"""
     episode_id: int
     prompts: List[Prompt] = []
+    group_prompts: List[GroupPrompt] = []  # 组级提示词（可选，仅在编辑后存在）
     generated_at: Optional[str] = None
 
 
@@ -28,6 +39,13 @@ class PromptUpdate(BaseModel):
     """提示词更新请求"""
     image_prompt: Optional[str] = None
     video_prompt: Optional[str] = None
+    confirmed: Optional[bool] = None
+
+
+class GroupPromptUpdate(BaseModel):
+    """组级提示词更新请求"""
+    combined_video_prompt: str
+    reference_asset_ids: Optional[List[str]] = None
     confirmed: Optional[bool] = None
 
 
