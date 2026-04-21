@@ -61,9 +61,23 @@ async def read_prompts(episode_id: int) -> PromptsCollection:
         for p in data.get("prompts", [])
     ]
 
+    from schemas.prompts_schema import GroupPrompt
+    group_prompts = [
+        GroupPrompt(
+            group_id=gp["group_id"],
+            combined_video_prompt=gp.get("combined_video_prompt", ""),
+            reference_asset_ids=gp.get("reference_asset_ids", []),
+            edited=gp.get("edited", False),
+            confirmed=gp.get("confirmed", False),
+            last_auto_generated=gp.get("last_auto_generated"),
+        )
+        for gp in data.get("group_prompts", [])
+    ]
+
     return PromptsCollection(
         episode_id=episode_id,
         prompts=prompts,
+        group_prompts=group_prompts,
         generated_at=data.get("generated_at"),
     )
 
