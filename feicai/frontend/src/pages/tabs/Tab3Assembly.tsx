@@ -46,10 +46,14 @@ export default function Tab3Assembly({
   // 当前组数据
   const groups = shotsCollection?.groups || []
   const currentGroup = groups.find(g => g.group_id === currentGroupId) || null
-  const currentGroupShots = currentGroup
-    ? shotsCollection!.shots.filter(s => currentGroup.shots.includes(s.shot_id))
-    : []
-  const currentGroupPrompts = prompts.filter(p => p.group_id === currentGroupId)
+  const currentGroupShots = useMemo(
+    () => currentGroup ? shotsCollection!.shots.filter(s => currentGroup.shots.includes(s.shot_id)) : [],
+    [currentGroup, shotsCollection]
+  )
+  const currentGroupPrompts = useMemo(
+    () => prompts.filter(p => p.group_id === currentGroupId),
+    [prompts, currentGroupId]
+  )
   const savedGroupPrompt = promptsCollection?.group_prompts?.find(gp => gp.group_id === currentGroupId)
 
   // 提取本组用到的资产
