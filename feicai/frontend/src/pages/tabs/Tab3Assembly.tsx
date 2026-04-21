@@ -245,6 +245,7 @@ export default function Tab3Assembly({
     try {
       await updateGroupPrompt(episodeId, currentGroupId, {
         combined_video_prompt: editingPrompt,
+        reference_asset_ids: selectedItems.map(i => i.key),
         anchor_declaration: editableAnchor || undefined,
         confirmed: true,
       })

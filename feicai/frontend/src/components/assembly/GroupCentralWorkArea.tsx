@@ -163,7 +163,10 @@ export default function GroupCentralWorkArea({
           onClick={() => { onEditGroupPrompt(editingPrompt); onSaveGroupPrompt() }}
           className="text-xs px-2 py-1 bg-gray-700 rounded hover:bg-gray-600"
         >保存</button>
-        <button onClick={onConfirmGroupPrompt} className="text-xs px-2 py-1 bg-blue-600 rounded hover:bg-blue-500">确认</button>
+        <button
+          onClick={() => { onEditGroupPrompt(editingPrompt); onConfirmGroupPrompt() }}
+          className="text-xs px-2 py-1 bg-blue-600 rounded hover:bg-blue-500"
+        >确认</button>
       </div>
 
       {/* 组合提示词编辑区（上半区） */}
