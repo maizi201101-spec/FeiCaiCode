@@ -30,7 +30,7 @@ async def execute_prompt_generation(task_id: int, episode_id: int):
             result=f"生成了 {len(collection.prompts)} 个提示词"
         )
     except Exception as e:
-        await update_task_status(task_id, "failed", error=str(e))
+        await update_task_status(task_id, "failed", error=str(e) or repr(e))
 
 
 @router.post("/generate")

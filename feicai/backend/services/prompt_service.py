@@ -257,30 +257,36 @@ async def generate_prompts_by_ai(episode_id: int) -> PromptsCollection:
   ]
 }}"""
 
-    # user prompt：仅动态数据
-    prompt = f"""## 资产清单
+    # 分批处理：每批最多 12 个 shots，避免大集数超时
+    BATCH_SIZE = 12
+    all_prompt_items = []
+
+    for batch_start in range(0, len(shots_info), BATCH_SIZE):
+        batch = shots_info[batch_start:batch_start + BATCH_SIZE]
+        batch_prompt = f"""## 资产清单
 """ + json.dumps(assets_info, ensure_ascii=False, indent=2) + """
 
 ## 分镜结构
-""" + json.dumps(shots_info, ensure_ascii=False, indent=2)
-    if effects_block:
-        prompt += effects_block
+""" + json.dumps(batch, ensure_ascii=False, indent=2)
+        if effects_block:
+            batch_prompt += effects_block
 
-    result = await call_llm(prompt, system_prompt, temperature=0.3, max_tokens=16000, project_id=project_id)
+        result = await call_llm(batch_prompt, system_prompt, temperature=0.3, max_tokens=16000, project_id=project_id)
 
-    # 解析 JSON
-    json_match = re.search(r"\{[\s\S]*\}", result)
-    if not json_match:
-        raise ValueError("LLM 未返回有效的 JSON 结果")
+        json_match = re.search(r"\{[\s\S]*\}", result)
+        if not json_match:
+            raise ValueError(f"LLM 未返回有效的 JSON 结果（批次 {batch_start // BATCH_SIZE + 1}）")
 
-    try:
-        data = json.loads(json_match.group())
-    except json.JSONDecodeError as e:
-        raise ValueError(f"JSON 解析失败: {e}")
+        try:
+            data = json.loads(json_match.group())
+        except json.JSONDecodeError as e:
+            raise ValueError(f"JSON 解析失败（批次 {batch_start // BATCH_SIZE + 1}）: {e}")
+
+        all_prompt_items.extend(data.get("prompts", []))
 
     # 构建 PromptsCollection
     prompts = []
-    for p in data.get("prompts", []):
+    for p in all_prompt_items:
         # 从 shots 中获取 group_id（如果 LLM 未返回）
         group_id = p.get("group_id", "")
         if not group_id:
