@@ -211,12 +211,12 @@ export default function Tab3Assembly({
     })
   }
 
-  const handleSaveGroupPrompt = async () => {
+  const handleSaveGroupPrompt = async (promptText: string) => {
     if (!currentGroupId) return
 
     try {
       await updateGroupPrompt(episodeId, currentGroupId, {
-        combined_video_prompt: editingPrompt,
+        combined_video_prompt: promptText,
         reference_asset_ids: selectedItems.map(i => i.key),
         anchor_declaration: editableAnchor || undefined,
       })
@@ -239,12 +239,12 @@ export default function Tab3Assembly({
     }
   }
 
-  const handleConfirmGroupPrompt = async () => {
+  const handleConfirmGroupPrompt = async (promptText: string) => {
     if (!currentGroupId) return
 
     try {
       await updateGroupPrompt(episodeId, currentGroupId, {
-        combined_video_prompt: editingPrompt,
+        combined_video_prompt: promptText,
         reference_asset_ids: selectedItems.map(i => i.key),
         anchor_declaration: editableAnchor || undefined,
         confirmed: true,

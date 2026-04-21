@@ -21,9 +21,9 @@ interface GroupCentralWorkAreaProps {
   onSpecialPromptContentChange: (text: string) => void
   onSpecialPromptScopeChange: (scope: 'group' | 'episode') => void
   onEditGroupPrompt: (prompt: string) => void
-  onSaveGroupPrompt: () => void
+  onSaveGroupPrompt: (promptText: string) => Promise<void>
   onResetGroupPrompt: () => void
-  onConfirmGroupPrompt: () => void
+  onConfirmGroupPrompt: (promptText: string) => Promise<void>
   duration: number
   setDuration: (d: number) => void
   resolution: string
@@ -87,12 +87,16 @@ export default function GroupCentralWorkArea({
   useEffect(() => {
     if (!isUserEditingRef.current) {
       setEditingPrompt(displayPrompt)
+      onEditGroupPrompt(displayPrompt)
     }
+  // onEditGroupPrompt 是 useState setter，引用稳定，省略安全
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [displayPrompt])
 
   useEffect(() => {
     isUserEditingRef.current = false
     setEditingPrompt(displayPrompt)
+    onEditGroupPrompt(displayPrompt)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentGroupId])
 
@@ -160,11 +164,17 @@ export default function GroupCentralWorkArea({
           <button onClick={onResetGroupPrompt} className="text-xs px-2 py-1 bg-gray-700 rounded hover:bg-gray-600">重置</button>
         )}
         <button
-          onClick={() => { onEditGroupPrompt(editingPrompt); onSaveGroupPrompt() }}
+          onClick={async () => {
+            await onSaveGroupPrompt(editingPrompt)
+            isUserEditingRef.current = false
+          }}
           className="text-xs px-2 py-1 bg-gray-700 rounded hover:bg-gray-600"
         >保存</button>
         <button
-          onClick={() => { onEditGroupPrompt(editingPrompt); onConfirmGroupPrompt() }}
+          onClick={async () => {
+            await onConfirmGroupPrompt(editingPrompt)
+            isUserEditingRef.current = false
+          }}
           className="text-xs px-2 py-1 bg-blue-600 rounded hover:bg-blue-500"
         >确认</button>
       </div>
@@ -178,6 +188,7 @@ export default function GroupCentralWorkArea({
           onChange={(e) => {
             isUserEditingRef.current = true
             setEditingPrompt(e.target.value)
+            onEditGroupPrompt(e.target.value)
           }}
           placeholder="【镜头01】(3.8s)..."
         />

@@ -11,11 +11,22 @@ interface AssetGridProps {
 }
 
 export default function AssetGrid({ assets, projectId, onUpdate, onDelete, onAddClick }: AssetGridProps) {
-  const [globalExpanded, setGlobalExpanded] = useState<boolean | null>(null)
-  const [globalVariantsExpanded, setGlobalVariantsExpanded] = useState<boolean | null>(null)
   const [zoomEnabled, setZoomEnabled] = useState(true)
 
-  const hasVariants = assets.some((a) => a.variants.length > 0)
+  // 将变体展开为同级条目
+  const flatItems = assets.flatMap((asset) => {
+    const base = [{ asset, displayName: undefined as string | undefined, variantDesc: undefined as string | undefined, key: `${asset.asset_type}-${asset.asset_id}-base` }]
+    if (asset.asset_type === 'character' && asset.variants.length > 0) {
+      const variants = asset.variants.map((v) => ({
+        asset,
+        displayName: `${asset.name} · ${v.variant_name}`,
+        variantDesc: v.visual_diff || v.trigger_condition || undefined,
+        key: `${asset.asset_type}-${asset.asset_id}-${v.variant_id}`,
+      }))
+      return [...base, ...variants]
+    }
+    return base
+  })
 
   if (assets.length === 0) {
     return (
@@ -34,76 +45,34 @@ export default function AssetGrid({ assets, projectId, onUpdate, onDelete, onAdd
 
   return (
     <div className="flex flex-col">
-      {/* 全局展开/收起控制栏 */}
+      {/* 控制栏 */}
       <div className="flex items-center gap-3 px-4 py-2 border-b border-gray-800 text-xs text-gray-500">
-        <span>资产卡片：</span>
-        <button
-          onClick={() => setGlobalExpanded(true)}
-          className="hover:text-gray-300 transition-colors"
-        >
-          全部展开
-        </button>
-        <button
-          onClick={() => setGlobalExpanded(false)}
-          className="hover:text-gray-300 transition-colors"
-        >
-          全部收起
-        </button>
-        <button
-          onClick={() => setGlobalExpanded(null)}
-          className="hover:text-gray-300 transition-colors"
-        >
-          独立控制
-        </button>
-        {hasVariants && (
-          <>
-            <span className="ml-4">变体：</span>
-            <button
-              onClick={() => setGlobalVariantsExpanded(true)}
-              className="hover:text-gray-300 transition-colors"
-            >
-              全部展开
-            </button>
-            <button
-              onClick={() => setGlobalVariantsExpanded(false)}
-              className="hover:text-gray-300 transition-colors"
-            >
-              全部收起
-            </button>
-            <button
-              onClick={() => setGlobalVariantsExpanded(null)}
-              className="hover:text-gray-300 transition-colors"
-            >
-              独立控制
-            </button>
-          </>
-        )}
-        <span className="ml-4 text-gray-600">|</span>
         <button
           onClick={() => setZoomEnabled(!zoomEnabled)}
-          className={`hover:text-gray-300 transition-colors ${zoomEnabled ? 'text-indigo-400' : ''}`}
+          className={`hover:text-gray-300 ${zoomEnabled ? 'text-indigo-400' : ''}`}
         >
           {zoomEnabled ? '放大显示 ✓' : '放大显示'}
         </button>
+        <span className="ml-auto text-gray-600">{flatItems.length} 项</span>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 p-4">
-        {assets.map((asset) => (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 p-4">
+        {flatItems.map((item) => (
           <AssetCard
-            key={`${asset.asset_type}-${asset.asset_id}`}
-            asset={asset}
+            key={item.key}
+            asset={item.asset}
             projectId={projectId}
+            displayName={item.displayName}
+            variantDesc={item.variantDesc}
             onUpdate={onUpdate}
             onDelete={onDelete}
-            forceExpanded={globalExpanded}
-            forceVariantsExpanded={globalVariantsExpanded}
             zoomEnabled={zoomEnabled}
           />
         ))}
         {/* 新增资产卡片 */}
         <div
           onClick={onAddClick}
-          className="bg-gray-800/50 border border-gray-700/50 rounded-lg h-[112px] flex items-center justify-center cursor-pointer hover:bg-gray-800 hover:border-gray-600 transition-colors"
+          className="bg-gray-800/50 border border-gray-700/50 rounded-lg min-h-[200px] flex items-center justify-center cursor-pointer hover:bg-gray-800 hover:border-gray-600 transition-colors"
         >
           <div className="text-center text-gray-500">
             <p className="text-2xl mb-1">+</p>

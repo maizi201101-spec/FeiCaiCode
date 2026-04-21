@@ -191,14 +191,13 @@ async def generate_assets_from_collapsed_refs(
                     appearance=f"{name}的外观描述（待补充）",
                     gender="",
                     age="",
-                    outfit=costumes[0],  # 唯一装扮作为 base outfit
+                    outfit=costumes[0],
                     variants=[],
                     tags=[],
                     images=[],
-                    needs_review=True
                 ))
             else:
-                # 多种装扮 -> 每种装扮建一个 variant，variant_id = 装扮 label
+                # 多种装扮 -> 每种装扮建一个 variant
                 variants = [
                     Variant(
                         variant_id=costume,
@@ -218,7 +217,6 @@ async def generate_assets_from_collapsed_refs(
                     variants=variants,
                     tags=[],
                     images=[],
-                    needs_review=True
                 ))
 
     # 处理场景（无 variant）
@@ -226,10 +224,8 @@ async def generate_assets_from_collapsed_refs(
         name = scene_data["name"]
 
         if name in existing_scenes_by_name:
-            # 已有场景，直接保留
             final_scenes.append(existing_scenes_by_name[name])
         else:
-            # 新场景
             asset_id = _next_asset_id("场景", existing_ids)
             existing_ids.add(asset_id)
 
@@ -240,10 +236,9 @@ async def generate_assets_from_collapsed_refs(
                 visual_elements=[],
                 time_of_day="",
                 lighting="",
-                variants=[],  # 场景无 variant
+                variants=[],
                 tags=[],
                 images=[],
-                needs_review=True
             ))
 
     # 处理道具（无 variant）
@@ -251,10 +246,8 @@ async def generate_assets_from_collapsed_refs(
         name = prop_data["name"]
 
         if name in existing_props_by_name:
-            # 已有道具，直接保留
             final_props.append(existing_props_by_name[name])
         else:
-            # 新道具
             asset_id = _next_asset_id("道具", existing_ids)
             existing_ids.add(asset_id)
 
@@ -262,10 +255,9 @@ async def generate_assets_from_collapsed_refs(
                 asset_id=asset_id,
                 name=name,
                 description=f"{name}的道具描述（待补充）",
-                variants=[],  # 道具无 variant
+                variants=[],
                 tags=[],
                 images=[],
-                needs_review=True
             ))
 
     # 保留未出现在本次提取中的已有资产

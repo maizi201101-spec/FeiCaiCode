@@ -406,40 +406,30 @@ async def consolidate_entity_cluster(
       "trigger_condition": "触发此变体的剧情条件",
       "visual_diff": "与 base_appearance 的具体视觉差异"
     }
-  ],
-  "needs_review": false
+  ]
 }"""
         rules = """【base_appearance 规则】只填永久稳定特征：
   ✓ 骨相、发色发型、体型、标志性配饰、基础服装
   ✗ 不填：哭泣/愤怒/惊恐等情绪、临时擦伤/流血、单集特有动作
 【重要】若所有集的 raw_fragments 均为空或标注"（无外观描述）"：
   outfit 和 base_appearance 必须填"待补充"，禁止根据角色身份、名字或剧情推断服饰
-【variant 触发标准】只有真正的视觉形态变化才建 variant：
+【variant 触发标准】只有真正的视觉形态变化才建 variant（至少2种形态才建 variants）：
   ✓ 换装（正装↔便装）、重大伤势（包扎/血迹）、能力爆发（光芒/特效）、伪装/化妆
-  ✗ 不建：普通情绪变化、微表情、日常动作"""
+  ✗ 不建：普通情绪变化、微表情、日常动作
+  ✗ 若只能识别出1种视觉变化，不建 variant，将该变化信息并入 outfit 描述即可"""
     elif asset_type == "scene":
         output_schema = """{
   "base_description": "场景的固定视觉特征：地点性质/建筑结构/永久陈设/光线氛围",
   "visual_elements": ["固定视觉元素1", "固定视觉元素2"],
   "time_of_day": "白天/夜晚/黄昏/不固定",
-  "lighting": "光线特征",
-  "variants": [
-    {
-      "variant_id": "v1",
-      "variant_name": "变体名称（如：夜间版/战后版）",
-      "trigger_condition": "触发条件",
-      "visual_diff": "与 base 的差异"
-    }
-  ],
-  "needs_review": false
+  "lighting": "光线特征"
 }"""
         rules = """【base_description 规则】只填场景的固定不变特征，不填单集特有的临时陈设变化
-【重要】若所有集的 raw_fragments 均为空，base_description 必须填"待补充"，禁止推断"""
+【重要】若所有集的 raw_fragments 均为空，base_description 必须填"待补充"，禁止推断
+【重要】场景不建 variants，不同光线/时段/状态的差异在 base_description 中用"/"分隔描述"""
     else:  # prop
         output_schema = """{
-  "base_description": "道具的固定外观：材质/形状/颜色/尺寸/标志性特征",
-  "variants": [],
-  "needs_review": false
+  "base_description": "道具的固定外观：材质/形状/颜色/尺寸/标志性特征"
 }"""
         rules = """【base_description 规则】只填道具的固定物理特征"""
 
@@ -474,30 +464,44 @@ async def consolidate_entity_cluster(
     asset: dict = {
         "asset_id": asset_id,
         "name": name,
-        "needs_review": bool(data.get("needs_review", False)),
         "tags": [],
         "variants": [],
         "images": [],
     }
 
-    # 处理 variants（过滤非 dict 项）
-    raw_variants = data.get("variants", [])
-    valid_variants = []
-    for v in raw_variants:
-        if isinstance(v, dict) and v.get("variant_id") and v.get("variant_name"):
-            valid_variants.append({
-                "variant_id": v["variant_id"],
-                "variant_name": v["variant_name"],
-                "trigger_condition": v.get("trigger_condition", ""),
-                "visual_diff": v.get("visual_diff", ""),
-            })
-    asset["variants"] = valid_variants
+    # 处理 variants：只有 character 才有 variants
+    if asset_type == "character":
+        raw_variants = data.get("variants", [])
+        valid_variants = []
+        for v in raw_variants:
+            if isinstance(v, dict) and v.get("variant_id") and v.get("variant_name"):
+                valid_variants.append({
+                    "variant_id": v["variant_id"],
+                    "variant_name": v["variant_name"],
+                    "trigger_condition": v.get("trigger_condition", ""),
+                    "visual_diff": v.get("visual_diff", ""),
+                })
+        # 单 variant 压平：只有1个变体时并入 outfit，不建层级
+        if len(valid_variants) == 1:
+            v = valid_variants[0]
+            diff = v.get("visual_diff", "").strip()
+            asset["variants"] = []
+            asset["_merged_variant_note"] = diff  # 暂存，后面合并入 outfit
+        else:
+            asset["variants"] = valid_variants
 
     if asset_type == "character":
+        base_outfit = data.get("outfit", "")
+        # 如果有被压平的单 variant，将其 visual_diff 追加到 outfit
+        merged_note = asset.pop("_merged_variant_note", "")
+        if merged_note and base_outfit:
+            base_outfit = f"{base_outfit}；{merged_note}"
+        elif merged_note:
+            base_outfit = merged_note
         asset["appearance"] = data.get("base_appearance", "")
         asset["gender"] = data.get("gender", "")
         asset["age"] = data.get("age", "")
-        asset["outfit"] = data.get("outfit", "")
+        asset["outfit"] = base_outfit
     elif asset_type == "scene":
         asset["description"] = data.get("base_description", "")
         asset["visual_elements"] = data.get("visual_elements", [])

@@ -10,15 +10,14 @@ import {
   type AssetImage,
 } from '../../api/assets'
 import { pollTaskStatus } from '../../hooks/useTaskPolling'
-import AssetVariantRow from './AssetVariantRow'
 
 interface AssetCardProps {
   asset: Asset
   projectId: number
+  displayName?: string
+  variantDesc?: string
   onUpdate: (assetType: AssetType, assetId: string, payload: AssetUpdatePayload) => Promise<Asset>
   onDelete: (assetType: AssetType, assetId: string) => Promise<void>
-  forceExpanded?: boolean | null
-  forceVariantsExpanded?: boolean | null
   zoomEnabled?: boolean
 }
 
@@ -29,24 +28,27 @@ const TYPE_COLOR = {
   prop: 'bg-emerald-900/50 text-emerald-300',
 } as const
 
-export default function AssetCard({ asset, projectId, onUpdate, onDelete, forceExpanded, forceVariantsExpanded, zoomEnabled = true }: AssetCardProps) {
-  const [expanded, setExpanded] = useState(false)
+export default function AssetCard({
+  asset,
+  projectId,
+  displayName,
+  variantDesc,
+  onUpdate,
+  onDelete,
+  zoomEnabled = true,
+}: AssetCardProps) {
   const [editing, setEditing] = useState(false)
-  const [editedName, setEditedName] = useState(asset.name)
+  const [editedName, setEditedName] = useState(displayName ?? asset.name)
   const [editedAppearance, setEditedAppearance] = useState(asset.appearance || '')
   const [editedDescription, setEditedDescription] = useState(asset.description || '')
   const [saving, setSaving] = useState(false)
-  const [variantsExpanded, setVariantsExpanded] = useState(false)
-
-  const isExpanded = forceExpanded != null ? forceExpanded : expanded
-  const isVariantsExpanded = forceVariantsExpanded != null ? forceVariantsExpanded : variantsExpanded
 
   const [images, setImages] = useState<AssetImage[]>([])
-  const [currentImageIndex, setCurrentImageIndex] = useState(1)
   const [loadingImages, setLoadingImages] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [generatingProgress, setGeneratingProgress] = useState('')
+  const [showImageModal, setShowImageModal] = useState(false)
 
   const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(null)
 
@@ -70,11 +72,6 @@ export default function AssetCard({ asset, projectId, onUpdate, onDelete, forceE
 
   const primaryImageUrl =
     images.length > 0 ? getImageUrl(projectId, asset.asset_type, asset.asset_id, 1) : null
-
-  const currentImageUrl =
-    images.length > 0
-      ? getImageUrl(projectId, asset.asset_type, asset.asset_id, currentImageIndex)
-      : null
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -112,25 +109,24 @@ export default function AssetCard({ asset, projectId, onUpdate, onDelete, forceE
     }
   }
 
-  const handleDeleteImage = async () => {
-    if (!confirm(`确定删除第 ${currentImageIndex} 张图片？`)) return
+  const handleSetPrimary = async (index: number) => {
+    if (index === 1) return
     try {
-      await deleteAssetImage(projectId, asset.asset_type, asset.asset_id, currentImageIndex)
+      await setPrimaryImage(projectId, asset.asset_type, asset.asset_id, index)
       await loadImages()
-      setCurrentImageIndex(1)
+      setShowImageModal(false)
     } catch (e) {
-      alert(e instanceof Error ? e.message : '删除失败')
+      alert(e instanceof Error ? e.message : '设置主图失败')
     }
   }
 
-  const handleSetPrimary = async () => {
-    if (currentImageIndex === 1) return
+  const handleDeleteImage = async (index: number) => {
+    if (!confirm(`确定删除第 ${index} 张图片？`)) return
     try {
-      await setPrimaryImage(projectId, asset.asset_type, asset.asset_id, currentImageIndex)
+      await deleteAssetImage(projectId, asset.asset_type, asset.asset_id, index)
       await loadImages()
-      setCurrentImageIndex(1)
     } catch (e) {
-      alert(e instanceof Error ? e.message : '设置主图失败')
+      alert(e instanceof Error ? e.message : '删除失败')
     }
   }
 
@@ -142,6 +138,8 @@ export default function AssetCard({ asset, projectId, onUpdate, onDelete, forceE
       else payload.description = editedDescription
       await onUpdate(asset.asset_type, asset.asset_id, payload)
       setEditing(false)
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '保存失败')
     } finally {
       setSaving(false)
     }
@@ -149,299 +147,230 @@ export default function AssetCard({ asset, projectId, onUpdate, onDelete, forceE
 
   const handleDelete = async () => {
     if (!confirm('确定删除此资产？')) return
-    await onDelete(asset.asset_type, asset.asset_id)
+    try {
+      await onDelete(asset.asset_type, asset.asset_id)
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '删除失败')
+    }
   }
 
-  const descText = asset.asset_type === 'character' ? asset.appearance : asset.description
+  const name = displayName ?? asset.name
+  const descText = variantDesc || (asset.asset_type === 'character' ? asset.appearance : asset.description)
 
   return (
-    <div className="flex flex-col">
-      {/* ── 父卡片（横向布局）─────────────────────────────── */}
-      <div
-        className={`bg-gray-800 rounded-lg overflow-hidden border group ${
-          asset.needs_review
-            ? 'border-yellow-500/70'
-            : 'border-gray-700'
-        }`}
-      >
-        <div className="flex gap-0">
-          {/* 左：16:9 缩略图 */}
+    <>
+      <div className="bg-gray-800 rounded-lg overflow-hidden border border-gray-700">
+        {/* 第1行：名字 + 标签 + ID + 删除 */}
+        <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-700">
+          <span className="text-sm font-medium text-white flex-shrink-0">{name}</span>
+          <span className={`text-xs px-1.5 py-0.5 rounded flex-shrink-0 ${TYPE_COLOR[asset.asset_type]}`}>
+            {TYPE_LABEL[asset.asset_type]}
+          </span>
+          <span className="text-xs text-gray-500 flex-shrink-0">{asset.asset_id}</span>
+          <div className="flex-1" />
+          <button
+            onClick={handleDelete}
+            className="text-xs px-2 py-0.5 bg-red-900/40 text-red-400 rounded hover:bg-red-800/60 flex-shrink-0"
+          >
+            删除
+          </button>
+        </div>
+
+        {/* 第2行：图片区（16:9）+ 底部按钮叠加 */}
+        <div className="relative bg-gray-900" style={{ aspectRatio: '16/9' }}>
           <div
-            className="relative shrink-0 bg-gray-900 flex items-center justify-center overflow-hidden cursor-pointer"
-            style={{ width: 80, height: 56 }}
+            className="absolute inset-0 flex items-center justify-center cursor-pointer"
             onMouseEnter={(e) => primaryImageUrl && zoomEnabled && setHoverPos({ x: e.clientX, y: e.clientY })}
             onMouseMove={(e) => primaryImageUrl && zoomEnabled && setHoverPos({ x: e.clientX, y: e.clientY })}
             onMouseLeave={() => setHoverPos(null)}
           >
             {loadingImages ? (
-              <span className="text-xs text-gray-600">...</span>
+              <span className="text-xs text-gray-600">加载中...</span>
+            ) : generating ? (
+              <div className="text-center">
+                <div className="animate-spin w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full mx-auto mb-1" />
+                <span className="text-xs text-gray-400">{generatingProgress}</span>
+              </div>
             ) : primaryImageUrl ? (
-              <img src={primaryImageUrl} alt={asset.name} className="w-full h-full object-contain" />
+              <img src={primaryImageUrl} alt={name} className="w-full h-full object-contain" />
             ) : (
-              <span className="text-xs text-gray-600">无图</span>
+              <span className="text-xs text-gray-600">暂无设定图</span>
             )}
           </div>
 
-          {/* 右：文字 + 操作 */}
-          <div className="flex-1 min-w-0 px-2 py-1.5">
-            <p className="text-sm font-medium text-white break-all">{asset.name}</p>
-            <div className="flex items-center gap-1 mt-0.5">
-              <span className={`text-xs px-1.5 py-0.5 rounded shrink-0 ${TYPE_COLOR[asset.asset_type]}`}>
-                {TYPE_LABEL[asset.asset_type]}
-              </span>
-              <span className="text-xs text-gray-500 break-all">{asset.asset_id}</span>
-              {asset.needs_review && (
-                <span className="text-xs px-1 py-0.5 rounded bg-yellow-900/40 text-yellow-400 border border-yellow-700/40 shrink-0">
-                  待审核
-                </span>
-              )}
-            </div>
-            {descText && !editing && (
-              <p className="text-xs text-gray-500 mt-0.5">{descText}</p>
-            )}
-          </div>
-
-          {/* 右侧操作列（hover 显示） */}
-          <div className="shrink-0 flex flex-col justify-center gap-1 pr-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          {/* 底部按钮叠加层 */}
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2 flex gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handleUpload}
+              className="hidden"
+            />
             <button
-              onClick={() => setExpanded(!isExpanded)}
-              className="text-xs px-2 py-0.5 bg-gray-700 text-gray-300 rounded hover:bg-gray-600"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading || generating}
+              className="text-xs px-2 py-1 bg-gray-700/90 text-gray-300 rounded hover:bg-gray-600 disabled:opacity-50"
             >
-              {isExpanded ? '收起' : '展开'}
+              {uploading ? '上传中...' : '上传'}
             </button>
-            {asset.needs_review && (
+            <button
+              onClick={handleGenerate}
+              disabled={generating || uploading}
+              className="text-xs px-2 py-1 bg-emerald-600/90 text-white rounded hover:bg-emerald-500 disabled:opacity-50"
+            >
+              {generating ? '生成中...' : 'AI生图'}
+            </button>
+            {images.length > 0 && (
               <button
-                onClick={() => onUpdate(asset.asset_type, asset.asset_id, { needs_review: false })}
-                className="text-xs px-2 py-0.5 bg-yellow-900/50 text-yellow-400 rounded hover:bg-yellow-800/60"
+                onClick={() => setShowImageModal(true)}
+                className="text-xs px-2 py-1 bg-indigo-600/90 text-white rounded hover:bg-indigo-500"
               >
-                ✓ 审核
+                ⊞ 管理图片 ({images.length})
               </button>
             )}
-            <button
-              onClick={handleDelete}
-              className="text-xs px-2 py-0.5 bg-red-900/40 text-red-400 rounded hover:bg-red-800/60"
-            >
-              删除
-            </button>
           </div>
         </div>
 
-        {/* 展开区：图片管理 + 内联编辑 */}
-        {isExpanded && (
-          <div className="border-t border-gray-700 p-3 space-y-3">
-            {/* 图片管理区 */}
-            <div className="flex gap-3 items-start">
-              {/* 图片预览 */}
-              <div
-                className="relative bg-gray-900 rounded flex items-center justify-center overflow-hidden shrink-0"
-                style={{ width: 160, height: 90 }}
-              >
-                {generating ? (
-                  <div className="text-center">
-                    <div className="animate-spin w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full mx-auto mb-1" />
-                    <span className="text-xs text-gray-400">{generatingProgress}</span>
-                  </div>
-                ) : currentImageUrl ? (
-                  <img src={currentImageUrl} alt={asset.name} className="w-full h-full object-contain" />
-                ) : (
-                  <span className="text-xs text-gray-600">暂无设定图</span>
-                )}
-              </div>
-
-              {/* 图片操作 */}
-              <div className="flex-1 space-y-2">
-                {images.length > 1 && (
-                  <select
-                    value={currentImageIndex}
-                    onChange={(e) => setCurrentImageIndex(Number(e.target.value))}
-                    className="w-full bg-gray-700 text-white text-xs px-2 py-1 rounded border border-gray-600"
-                  >
-                    {images.map((img) => (
-                      <option key={img.index} value={img.index}>
-                        v{img.index} {img.is_primary ? '(主图)' : ''}
-                      </option>
-                    ))}
-                  </select>
-                )}
-                <div className="flex flex-wrap gap-1">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    onChange={handleUpload}
-                    className="hidden"
-                  />
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploading || generating}
-                    className="text-xs px-2 py-1 bg-gray-700 text-gray-300 rounded hover:bg-gray-600 disabled:opacity-50"
-                  >
-                    {uploading ? '上传中...' : '上传'}
-                  </button>
-                  <button
-                    onClick={handleGenerate}
-                    disabled={generating || uploading}
-                    className="text-xs px-2 py-1 bg-emerald-600 text-white rounded hover:bg-emerald-500 disabled:opacity-50"
-                  >
-                    {generating ? '生成中...' : 'AI生图'}
-                  </button>
-                  {images.length > 0 && currentImageIndex !== 1 && (
-                    <button
-                      onClick={handleSetPrimary}
-                      className="text-xs px-2 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-500"
-                    >
-                      设主图
-                    </button>
-                  )}
-                  {images.length > 0 && (
-                    <button
-                      onClick={handleDeleteImage}
-                      className="text-xs px-2 py-1 bg-red-900/50 text-red-300 rounded hover:bg-red-800"
-                    >
-                      删图
-                    </button>
-                  )}
-                </div>
-                {images.length > 0 && (
-                  <span className="text-xs text-gray-600">{images.length} 张图</span>
-                )}
+        {/* 第3行：文字描述（双击编辑） */}
+        <div className="p-3 border-t border-gray-700">
+          {editing ? (
+            <div className="space-y-2">
+              <input
+                type="text"
+                value={editedName}
+                onChange={(e) => setEditedName(e.target.value)}
+                className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm text-white"
+                placeholder="名称"
+              />
+              {asset.asset_type === 'character' ? (
+                <textarea
+                  value={editedAppearance}
+                  onChange={(e) => setEditedAppearance(e.target.value)}
+                  className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm text-white resize-none"
+                  rows={4}
+                  placeholder="外貌描述"
+                />
+              ) : (
+                <textarea
+                  value={editedDescription}
+                  onChange={(e) => setEditedDescription(e.target.value)}
+                  className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm text-white resize-none"
+                  rows={4}
+                  placeholder="描述"
+                />
+              )}
+              <div className="flex gap-2">
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-700 text-white text-sm rounded"
+                >
+                  {saving ? '保存中...' : '保存'}
+                </button>
+                <button
+                  onClick={() => setEditing(false)}
+                  className="px-3 py-1 bg-gray-700 text-gray-300 text-sm rounded hover:bg-gray-600"
+                >
+                  取消
+                </button>
               </div>
             </div>
-
-            {/* 内联编辑区 */}
-            {editing ? (
-              <div className="space-y-2">
-                <input
-                  type="text"
-                  value={editedName}
-                  onChange={(e) => setEditedName(e.target.value)}
-                  className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm text-white"
-                  placeholder="名称"
-                />
-                {asset.asset_type === 'character' ? (
-                  <textarea
-                    value={editedAppearance}
-                    onChange={(e) => setEditedAppearance(e.target.value)}
-                    className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm text-white resize-none"
-                    rows={3}
-                    placeholder="外貌描述"
-                  />
-                ) : (
-                  <textarea
-                    value={editedDescription}
-                    onChange={(e) => setEditedDescription(e.target.value)}
-                    className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm text-white resize-none"
-                    rows={3}
-                    placeholder="描述"
-                  />
-                )}
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleSave}
-                    disabled={saving}
-                    className="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-700 text-white text-sm rounded"
-                  >
-                    {saving ? '保存中...' : '保存'}
-                  </button>
-                  <button
-                    onClick={() => setEditing(false)}
-                    className="px-3 py-1 bg-gray-700 text-gray-300 text-sm rounded hover:bg-gray-600"
-                  >
-                    取消
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-1 text-sm text-gray-400">
-                {asset.asset_type === 'character' && (
-                  <>
-                    {asset.gender && <p><span className="text-gray-500">性别：</span>{asset.gender}{asset.age && ` · ${asset.age}`}</p>}
-                    {asset.appearance && <p className="line-clamp-3">{asset.appearance}</p>}
-                    {asset.outfit && <p className="text-xs text-gray-500">{asset.outfit}</p>}
-                  </>
-                )}
-                {asset.asset_type === 'scene' && (
-                  <>
-                    {asset.description && <p className="line-clamp-3">{asset.description}</p>}
-                    {asset.time_of_day && <p><span className="text-gray-500">时间：</span>{asset.time_of_day}{asset.lighting && ` · ${asset.lighting}`}</p>}
-                  </>
-                )}
-                {asset.asset_type === 'prop' && asset.description && (
-                  <p className="line-clamp-3">{asset.description}</p>
-                )}
-              </div>
-            )}
-
-            {/* 底部操作行 */}
-            <div className="flex items-center gap-3 pt-1 border-t border-gray-700/50">
-              {!editing && (
-                <button
-                  onClick={() => setEditing(true)}
-                  className="text-xs text-gray-400 hover:text-gray-200"
-                >
-                  编辑描述
-                </button>
-              )}
-              {asset.needs_review && (
-                <button
-                  onClick={() => onUpdate(asset.asset_type, asset.asset_id, { needs_review: false })}
-                  className="text-xs text-yellow-400 hover:text-yellow-300"
-                >
-                  标记已审核
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* ── Variant 子卡片 ──────────────────────────────── */}
-      {asset.variants.length > 0 && (
-        <div className="mt-0.5">
-          {isVariantsExpanded ? (
-            <>
-              {asset.variants.map((v) => (
-                <AssetVariantRow
-                  key={v.variant_id}
-                  variant={v}
-                  projectId={projectId}
-                  assetType={asset.asset_type}
-                  assetId={asset.asset_id}
-                  zoomEnabled={zoomEnabled}
-                />
-              ))}
-              <button
-                onClick={() => setVariantsExpanded(false)}
-                className="ml-4 pl-3 text-xs text-gray-600 hover:text-gray-400 py-0.5"
-              >
-                收起变体
-              </button>
-            </>
           ) : (
-            <button
-              onClick={() => setVariantsExpanded(true)}
-              className="ml-4 pl-3 text-xs text-gray-600 hover:text-gray-400 py-0.5 border-l border-gray-700"
+            <div
+              className="space-y-1 text-sm text-gray-400 cursor-text"
+              onDoubleClick={() => setEditing(true)}
+              title="双击编辑"
             >
-              展开 {asset.variants.length} 个变体 ▾
-            </button>
+              {asset.asset_type === 'character' && (
+                <>
+                  {asset.gender && <p><span className="text-gray-500">性别：</span>{asset.gender}{asset.age && ` · ${asset.age}`}</p>}
+                  {asset.appearance && <p>{asset.appearance}</p>}
+                  {asset.outfit && <p className="text-xs text-gray-500">{asset.outfit}</p>}
+                </>
+              )}
+              {asset.asset_type === 'scene' && (
+                <>
+                  {asset.description && <p>{asset.description}</p>}
+                  {asset.time_of_day && <p><span className="text-gray-500">时间：</span>{asset.time_of_day}{asset.lighting && ` · ${asset.lighting}`}</p>}
+                  {asset.visual_elements && asset.visual_elements.length > 0 && (
+                    <p className="text-xs text-gray-500">{asset.visual_elements.join('、')}</p>
+                  )}
+                </>
+              )}
+              {asset.asset_type === 'prop' && asset.description && (
+                <p>{asset.description}</p>
+              )}
+              {variantDesc && <p className="text-xs text-blue-400">{variantDesc}</p>}
+            </div>
           )}
         </div>
-      )}
+      </div>
 
-      {/* 鼠标悬浮大图预览 */}
+      {/* 鼠标悬浮大图预览（960×540） */}
       {hoverPos && primaryImageUrl && (
         <div
           className="fixed z-[9999] pointer-events-none"
-          style={{ left: hoverPos.x + 16, top: hoverPos.y - 90 }}
+          style={{ left: hoverPos.x + 16, top: hoverPos.y - 270 }}
         >
           <img
             src={primaryImageUrl}
-            alt={asset.name}
+            alt={name}
             className="rounded-lg shadow-2xl border border-gray-600 object-contain bg-gray-900"
-            style={{ width: 240, height: 135 }}
+            style={{ width: 960, height: 540 }}
           />
         </div>
       )}
-    </div>
+
+      {/* 图片管理弹窗 */}
+      {showImageModal && (
+        <div
+          className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9998]"
+          onClick={() => setShowImageModal(false)}
+        >
+          <div
+            className="bg-gray-800 rounded-lg p-4 max-w-4xl max-h-[80vh] overflow-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-medium text-white">管理图片 - {name}</h3>
+              <button
+                onClick={() => setShowImageModal(false)}
+                className="text-gray-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              {images.map((img) => {
+                const imgUrl = getImageUrl(projectId, asset.asset_type, asset.asset_id, img.index)
+                return (
+                  <div key={img.index} className="relative group">
+                    <div
+                      className={`aspect-video rounded border-2 overflow-hidden cursor-pointer ${
+                        img.is_primary ? 'border-blue-500' : 'border-gray-700 hover:border-gray-500'
+                      }`}
+                      onClick={() => handleSetPrimary(img.index)}
+                    >
+                      <img src={imgUrl} alt={`v${img.index}`} className="w-full h-full object-cover" />
+                    </div>
+                    <div className="absolute top-1 left-1 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">
+                      v{img.index} {img.is_primary && '(主图)'}
+                    </div>
+                    <button
+                      onClick={() => handleDeleteImage(img.index)}
+                      className="absolute top-1 right-1 bg-red-900/80 text-red-300 text-xs px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      删除
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+            <p className="text-xs text-gray-500 mt-3">点击图片设为主图</p>
+          </div>
+        </div>
+      )}
+    </>
   )
 }
