@@ -239,7 +239,7 @@ async def generate_prompts_by_ai(episode_id: int) -> PromptsCollection:
     if effects_block:
         prompt += effects_block
 
-    result = await call_llm(prompt, system_prompt, temperature=0.3, max_tokens=16000)
+    result = await call_llm(prompt, system_prompt, temperature=0.3, max_tokens=16000, project_id=project_id)
 
     # 解析 JSON
     json_match = re.search(r"\{[\s\S]*\}", result)

@@ -49,7 +49,7 @@ async def get_or_create_episode(project_id: int, episode_number: int) -> int:
         return row[0]
 
 
-async def generate_summary(episode_content: str) -> str:
+async def generate_summary(episode_content: str, project_id: Optional[int] = None) -> str:
     """为单集剧本生成 100-200 字梗概"""
     system_prompt = """你是一个专业的剧本分析助手，擅长概括剧情梗概。
 
@@ -61,7 +61,7 @@ async def generate_summary(episode_content: str) -> str:
 
     prompt = f"请为以下剧本内容生成梗概：\n\n{episode_content[:2000]}"
 
-    summary = await call_llm(prompt, system_prompt, temperature=0.3, max_tokens=500)
+    summary = await call_llm(prompt, system_prompt, temperature=0.3, max_tokens=500, project_id=project_id)
     return summary.strip()
 
 
@@ -135,7 +135,7 @@ async def generate_all_summaries(
         await save_script(project_path, split.episode_number, episode_content)
 
         # 生成梗概
-        summary = await generate_summary(episode_content)
+        summary = await generate_summary(episode_content, project_id=project_id)
 
         # 保存梗概
         await save_summary(project_path, split.episode_number, summary)
@@ -177,7 +177,7 @@ async def regenerate_summary(episode_id: int) -> str:
     script_content = script_file.read_text(encoding="utf-8")
 
     # 重新生成梗概
-    summary = await generate_summary(script_content)
+    summary = await generate_summary(script_content, project_id=project_id)
 
     # 保存梗概
     await save_summary(project_path, episode_number, summary)

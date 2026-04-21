@@ -259,7 +259,7 @@ async def plan_shots_by_ai(episode_id: int) -> tuple[ShotsCollection, list[str]]
     if costume_context:
         prompt += "\n\n" + costume_context
 
-    result = await call_llm(prompt, system_prompt, temperature=0.3, max_tokens=32000)
+    result = await call_llm(prompt, system_prompt, temperature=0.3, max_tokens=32000, project_id=project_id)
 
     # 解析 JSON
     json_match = re.search(r"\{[\s\S]*\}", result)

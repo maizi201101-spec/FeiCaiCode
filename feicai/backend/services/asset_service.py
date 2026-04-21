@@ -172,7 +172,7 @@ async def extract_raw_mentions_from_episode(
 {script_content}"""
 
     try:
-        result = await call_llm(prompt, system_prompt, temperature=0.1, max_tokens=4000)
+        result = await call_llm(prompt, system_prompt, temperature=0.1, max_tokens=4000, project_id=project_id)
     except ValueError as e:
         return {"episode_id": episode_id, "episode_number": episode["number"],
                 "status": "failed", "error": str(e)}
@@ -362,6 +362,7 @@ def _deduplicate_fragments(fragments: list[str]) -> list[str]:
 async def consolidate_entity_cluster(
     cluster: dict,
     existing_asset: Optional[dict] = None,
+    project_id: Optional[int] = None,
 ) -> Optional[dict]:
     """Phase 2：对单个实体簇做一次 LLM 调用，提炼 base + variants。
 
@@ -456,7 +457,7 @@ async def consolidate_entity_cluster(
 {episodes_text}"""
 
     try:
-        result = await call_llm(prompt, system_prompt, temperature=0.1, max_tokens=3000)
+        result = await call_llm(prompt, system_prompt, temperature=0.1, max_tokens=3000, project_id=project_id)
     except ValueError:
         return None
 
@@ -594,7 +595,7 @@ async def run_two_phase_extraction(
                         existing_asset_dict = p.model_dump()
                         break
 
-        asset_dict = await consolidate_entity_cluster(cluster, existing_asset_dict)
+        asset_dict = await consolidate_entity_cluster(cluster, existing_asset_dict, project_id=project_id)
         if not asset_dict:
             continue
 
