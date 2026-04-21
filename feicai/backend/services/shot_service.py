@@ -492,3 +492,121 @@ async def recalculate_group_duration(episode_id: int, group_id: str) -> float:
     await write_shots(episode_id, collection)
 
     return total
+
+async def resolve_asset_bindings(episode_id: int) -> dict:
+    """
+    自动坍缩：将 shot.asset_refs.characters[].costume 解析到 variant_id，写入 asset_bindings
+
+    返回统计信息：
+    {
+        "total_shots": int,
+        "resolved_count": int,
+        "exact_matches": int,
+        "fuzzy_matches": int,
+        "unresolved": [{"shot_id": str, "character": str, "costume": str}]
+    }
+    """
+    from schemas.shots_schema import AssetBinding
+
+    collection = await read_shots(episode_id)
+    episode = await get_episode_info(episode_id)
+    if not episode:
+        raise ValueError("集数不存在")
+
+    # 读取资产库
+    assets_collection = await read_assets(episode["project_id"])
+
+    stats = {
+        "total_shots": len(collection.shots),
+        "resolved_count": 0,
+        "exact_matches": 0,
+        "fuzzy_matches": 0,
+        "unresolved": []
+    }
+
+    for shot in collection.shots:
+        if not shot.asset_refs or not shot.asset_refs.characters:
+            continue
+
+        # 清空旧的 asset_bindings（重新生成）
+        shot.asset_bindings = []
+
+        for char_ref in shot.asset_refs.characters:
+            # 查找对应的 Character 资产
+            character = next(
+                (c for c in assets_collection.characters if c.name == char_ref.name),
+                None
+            )
+
+            if not character:
+                stats["unresolved"].append({
+                    "shot_id": shot.shot_id,
+                    "character": char_ref.name,
+                    "costume": char_ref.costume,
+                    "reason": "角色不存在于资产库"
+                })
+                continue
+
+            # 如果没有 costume 或没有 variants，绑定到 base
+            if not char_ref.costume or not character.variants:
+                shot.asset_bindings.append(AssetBinding(
+                    asset_id=character.asset_id,
+                    variant_id=None,
+                    confidence=1.0,
+                    needs_review=False
+                ))
+                stats["resolved_count"] += 1
+                stats["exact_matches"] += 1
+                continue
+
+            # 尝试精确匹配
+            variant = next(
+                (v for v in character.variants if v.variant_name == char_ref.costume),
+                None
+            )
+
+            if variant:
+                shot.asset_bindings.append(AssetBinding(
+                    asset_id=character.asset_id,
+                    variant_id=variant.variant_id,
+                    confidence=1.0,
+                    needs_review=False
+                ))
+                stats["resolved_count"] += 1
+                stats["exact_matches"] += 1
+                continue
+
+            # 尝试包含匹配（fuzzy）
+            variant = next(
+                (v for v in character.variants
+                 if char_ref.costume in v.variant_name or v.variant_name in char_ref.costume),
+                None
+            )
+
+            if variant:
+                shot.asset_bindings.append(AssetBinding(
+                    asset_id=character.asset_id,
+                    variant_id=variant.variant_id,
+                    confidence=0.8,
+                    needs_review=True  # fuzzy match 需要人工审核
+                ))
+                stats["resolved_count"] += 1
+                stats["fuzzy_matches"] += 1
+            else:
+                # 无法匹配，绑定到 base 并标记需要审核
+                shot.asset_bindings.append(AssetBinding(
+                    asset_id=character.asset_id,
+                    variant_id=None,
+                    confidence=0.5,
+                    needs_review=True
+                ))
+                stats["unresolved"].append({
+                    "shot_id": shot.shot_id,
+                    "character": char_ref.name,
+                    "costume": char_ref.costume,
+                    "reason": f"未找到匹配的 variant（可选：{[v.variant_name for v in character.variants]}）"
+                })
+
+    await write_shots(episode_id, collection)
+
+    return stats

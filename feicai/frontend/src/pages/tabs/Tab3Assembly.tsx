@@ -80,6 +80,33 @@ export default function Tab3Assembly({
     const seen = new Set<string>()
 
     shotsCollection.shots.forEach(shot => {
+      // 优先使用 asset_bindings（已坍缩）
+      if (shot.asset_bindings && shot.asset_bindings.length > 0) {
+        shot.asset_bindings.forEach(binding => {
+          const asset = allAssets.find(a => a.asset_id === binding.asset_id)
+          if (!asset) return
+
+          const key = binding.variant_id ? `${binding.asset_id}_${binding.variant_id}` : binding.asset_id
+          if (seen.has(key)) return
+          seen.add(key)
+
+          let displayName = asset.name
+          let imageIndex = 1
+
+          if (binding.variant_id && asset.variants) {
+            const variant = asset.variants.find(v => v.variant_id === binding.variant_id)
+            if (variant) {
+              displayName = `${asset.name}(${variant.variant_name})`
+              imageIndex = asset.variants.indexOf(variant) + 1
+            }
+          }
+
+          items.push({ key, asset, displayName, imageIndex })
+        })
+        return
+      }
+
+      // 降级：从 asset_refs 提取（fuzzy match）
       if (!shot.asset_refs) return
 
       // 角色：按 (assetId, costume) 区分版本
@@ -91,7 +118,6 @@ export default function Tab3Assembly({
         if (seen.has(key)) return
         seen.add(key)
 
-        // 尝试通过 costume 匹配 variant，找到则用对应图片索引
         let imageIndex = 1
         if (c.costume && asset.variants?.length) {
           const vi = asset.variants.findIndex(

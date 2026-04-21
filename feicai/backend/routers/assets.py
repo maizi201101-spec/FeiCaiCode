@@ -148,6 +148,8 @@ async def delete_asset_api(project_id: int, asset_type: AssetType, asset_id: str
 @router.post("/projects/{project_id}/assets/extract")
 async def extract_assets(project_id: int, payload: ExtractRequest):
     """AI 提取资产（两阶段批处理：Phase1 原始提及 → 程序聚类 → Phase2 逐实体提炼）"""
+    from services.shot_service import resolve_asset_bindings
+
     project_path = await get_project_path(project_id)
     if not project_path:
         raise HTTPException(404, "项目不存在")
@@ -156,6 +158,17 @@ async def extract_assets(project_id: int, payload: ExtractRequest):
 
     if result.get("status") == "failed":
         raise HTTPException(500, result.get("error", "提取失败"))
+
+    # 提取完成后自动坍缩 costume → variant_id
+    binding_stats = []
+    for episode_id in payload.episode_ids:
+        try:
+            stats = await resolve_asset_bindings(episode_id)
+            binding_stats.append({"episode_id": episode_id, "stats": stats})
+        except Exception as e:
+            binding_stats.append({"episode_id": episode_id, "error": str(e)})
+
+    result["binding_stats"] = binding_stats
 
     return result
 
@@ -184,6 +197,8 @@ async def collapse_preview(episode_id: int):
 @router.post("/episodes/{episode_id}/assets/extract-from-storyboard")
 async def extract_from_storyboard(episode_id: int):
     """从分镜 asset_refs 坍缩提取资产（v1.7 架构）"""
+    from services.shot_service import resolve_asset_bindings
+
     episode = await get_episode_info(episode_id)
     if not episode:
         raise HTTPException(404, "集数不存在")
@@ -195,6 +210,11 @@ async def extract_from_storyboard(episode_id: int):
 
     try:
         result = await extract_assets_from_storyboard(episode_id, project_id)
+
+        # 提取完成后自动坍缩 costume → variant_id
+        binding_stats = await resolve_asset_bindings(episode_id)
+        result["binding_stats"] = binding_stats
+
         return result
     except ValueError as e:
         raise HTTPException(400, str(e))
