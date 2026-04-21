@@ -6,6 +6,7 @@ interface PreviewDrawerProps {
   onClose: () => void
   combinedPrompt: string
   anchorDeclaration: string
+  specialPrompt: string
   globalPrompt: string
   settings: {
     default_model: string
@@ -27,6 +28,7 @@ export default function PreviewDrawer({
   onClose,
   combinedPrompt,
   anchorDeclaration,
+  specialPrompt,
   globalPrompt,
   settings,
   duration,
@@ -42,6 +44,7 @@ export default function PreviewDrawer({
   const finalPrompt = [
     combinedPrompt,
     anchorDeclaration && `\n[锚定声明] ${anchorDeclaration}`,
+    specialPrompt && `\n[特殊提示词] ${specialPrompt}`,
     globalPrompt && `\n[全局提示词] ${globalPrompt}`
   ].filter(Boolean).join('\n')
 
@@ -93,15 +96,23 @@ export default function PreviewDrawer({
             )}
           </div>
 
-          {/* 3. 全局提示词 */}
+          {/* 3. 特殊提示词（第2块） */}
           <div>
-            <div className="text-sm font-medium text-gray-400 mb-2">全局提示词</div>
+            <div className="text-sm font-medium text-gray-400 mb-2">特殊提示词（第2块）</div>
+            <div className="p-3 bg-gray-800 rounded text-sm border border-gray-700">
+              {specialPrompt || '未配置'}
+            </div>
+          </div>
+
+          {/* 4. 全局提示词（第1块） */}
+          <div>
+            <div className="text-sm font-medium text-gray-400 mb-2">全局提示词（第1块）</div>
             <div className="p-3 bg-gray-800 rounded text-sm border border-gray-700 max-h-32 overflow-auto">
               {globalPrompt || '未配置'}
             </div>
           </div>
 
-          {/* 4. 最终拼接结果 */}
+          {/* 5. 最终拼接结果 */}
           <div>
             <div className="text-sm font-medium text-gray-400 mb-2">最终提示词（传给 CLI）</div>
             <div className="p-3 bg-gray-800 rounded text-sm whitespace-pre-wrap border border-blue-500/50 max-h-64 overflow-auto">

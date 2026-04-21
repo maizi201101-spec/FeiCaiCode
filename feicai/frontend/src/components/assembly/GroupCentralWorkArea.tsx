@@ -16,6 +16,10 @@ interface GroupCentralWorkAreaProps {
   anchorDeclaration: string       // 自动生成（只读）
   editableAnchor: string          // 可编辑版本
   onEditableAnchorChange: (text: string) => void
+  specialPromptContent: string
+  specialPromptScope: 'group' | 'episode'
+  onSpecialPromptContentChange: (text: string) => void
+  onSpecialPromptScopeChange: (scope: 'group' | 'episode') => void
   onEditGroupPrompt: (prompt: string) => void
   onSaveGroupPrompt: () => void
   onResetGroupPrompt: () => void
@@ -43,6 +47,10 @@ export default function GroupCentralWorkArea({
   anchorDeclaration,
   editableAnchor,
   onEditableAnchorChange,
+  specialPromptContent,
+  specialPromptScope,
+  onSpecialPromptContentChange,
+  onSpecialPromptScopeChange,
   onEditGroupPrompt,
   onSaveGroupPrompt,
   onResetGroupPrompt,
@@ -216,6 +224,27 @@ export default function GroupCentralWorkArea({
               ))}
             </div>
           )}
+
+          {/* 特殊提示词（第2块） */}
+          <div className="border-t border-gray-700 pt-2 mt-2">
+            <div className="flex items-center justify-between mb-1">
+              <div className="text-xs text-gray-500">特殊提示词（第2块）</div>
+              <select
+                value={specialPromptScope}
+                onChange={(e) => onSpecialPromptScopeChange(e.target.value as 'group' | 'episode')}
+                className="text-xs border border-gray-700 rounded px-1.5 py-0.5 bg-gray-800"
+              >
+                <option value="group">仅本组</option>
+                <option value="episode">本集全部</option>
+              </select>
+            </div>
+            <textarea
+              value={specialPromptContent}
+              onChange={(e) => onSpecialPromptContentChange(e.target.value)}
+              className="w-full text-xs bg-gray-800 border border-gray-700 rounded p-2 resize-none h-16 focus:border-blue-500 focus:outline-none"
+              placeholder="特殊效果、风格要求等..."
+            />
+          </div>
         </div>
 
         {/* 右侧：当集资产网格 */}
@@ -224,7 +253,7 @@ export default function GroupCentralWorkArea({
           {episodeAssets.length === 0 ? (
             <div className="text-xs text-gray-600 text-center mt-8">暂无资产引用数据</div>
           ) : (
-            <div className="grid grid-cols-5 gap-1.5">
+            <div className={`grid gap-1.5 ${episodeAssets.length <= 10 ? 'grid-cols-5' : 'grid-cols-6'}`}>
               {episodeAssets.map(item => {
                 const isSelected = selectedItems.some(s => s.key === item.key)
                 const selectedIndex = selectedItems.findIndex(s => s.key === item.key)

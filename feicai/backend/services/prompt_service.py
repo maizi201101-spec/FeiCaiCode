@@ -75,10 +75,22 @@ async def read_prompts(episode_id: int) -> PromptsCollection:
         for gp in data.get("group_prompts", [])
     ]
 
+    from schemas.prompts_schema import SpecialPrompt
+    special_prompts = [
+        SpecialPrompt(
+            id=sp["id"],
+            content=sp["content"],
+            scope=sp["scope"],
+            target_ids=sp.get("target_ids", []),
+        )
+        for sp in data.get("special_prompts", [])
+    ]
+
     return PromptsCollection(
         episode_id=episode_id,
         prompts=prompts,
         group_prompts=group_prompts,
+        special_prompts=special_prompts,
         generated_at=data.get("generated_at"),
     )
 

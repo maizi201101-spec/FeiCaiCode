@@ -42,6 +42,10 @@ export default function Tab3Assembly({
   const [editableAnchor, setEditableAnchor] = useState('')
   const isAnchorUserEditedRef = useRef(false)
 
+  // 特殊提示词（第2块）
+  const [specialPromptContent, setSpecialPromptContent] = useState('')
+  const [specialPromptScope, setSpecialPromptScope] = useState<'group' | 'episode'>('group')
+
   // 生成参数
   const [duration, setDuration] = useState(12)
   const [resolution, setResolution] = useState('1080p')
@@ -159,10 +163,10 @@ export default function Tab3Assembly({
     }
   }, [focusGroupId, currentGroupId, onFocusHandled])
 
-  // 更新时长默认值
+  // 更新时长默认值（最小 4 秒）
   useEffect(() => {
     if (currentGroup) {
-      setDuration(Math.ceil(currentGroup.total_duration))
+      setDuration(Math.max(4, Math.ceil(currentGroup.total_duration)))
     }
   }, [currentGroup])
 
@@ -296,6 +300,10 @@ export default function Tab3Assembly({
             isAnchorUserEditedRef.current = true
             setEditableAnchor(text)
           }}
+          specialPromptContent={specialPromptContent}
+          specialPromptScope={specialPromptScope}
+          onSpecialPromptContentChange={setSpecialPromptContent}
+          onSpecialPromptScopeChange={setSpecialPromptScope}
           onEditGroupPrompt={setEditingPrompt}
           onSaveGroupPrompt={handleSaveGroupPrompt}
           onResetGroupPrompt={handleResetGroupPrompt}
@@ -318,6 +326,7 @@ export default function Tab3Assembly({
         onClose={() => setShowPreview(false)}
         combinedPrompt={editingPrompt}
         anchorDeclaration={editableAnchor}
+        specialPrompt={specialPromptContent}
         globalPrompt={settings?.global_prompt || ''}
         settings={{
           default_model: settings?.default_model || 'seedance2.0',

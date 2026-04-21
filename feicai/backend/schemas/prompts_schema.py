@@ -33,6 +33,7 @@ class PromptsCollection(BaseModel):
     episode_id: int
     prompts: List[Prompt] = []
     group_prompts: List[GroupPrompt] = []  # 组级提示词（可选，仅在编辑后存在）
+    special_prompts: List[SpecialPrompt] = []  # 特殊提示词（第2块）
     generated_at: Optional[str] = None
 
 

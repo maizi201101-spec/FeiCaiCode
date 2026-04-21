@@ -20,10 +20,18 @@ export interface GroupPrompt {
   last_auto_generated?: string
 }
 
+export interface SpecialPrompt {
+  id: string
+  content: string
+  scope: 'shot' | 'group' | 'episode' | 'selected'
+  target_ids: string[]
+}
+
 export interface PromptsCollection {
   episode_id: number
   prompts: Prompt[]
   group_prompts: GroupPrompt[]
+  special_prompts: SpecialPrompt[]
   generated_at?: string
 }
 

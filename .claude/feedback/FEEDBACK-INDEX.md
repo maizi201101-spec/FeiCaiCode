@@ -21,3 +21,5 @@
 - [React State 依赖与全局控制模式](react-state-dependency-patterns.md) — useEffect 依赖遗漏 + force prop 全局控制模式
 - [数据显示格式化缺失](data-display-formatting.md) — 浮点数未格式化直接渲染，需统一 toFixed 处理
 - [用户确认的指令被静默打折执行](silent-discount-on-confirmed-instructions.md) — AI 自行裁量"已覆盖"跳过部分内容，未完整执行用户确认的指令
+- [detect-feedback-signal Hook 死循环](detect-feedback-hook-infinite-loop.md) — Hook 无法感知 session 内 code review 状态，review 通过后仍反复触发
+- [Tab3 生成参数位置和参考图锚定区布局重新设计](tab3-layout-redesign-params-and-anchor.md) — 生成参数应移至顶部工具栏，参考图锚定区需左右分区重新设计
