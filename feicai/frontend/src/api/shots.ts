@@ -169,8 +169,18 @@ export async function getStoryboardMd(episodeId: number): Promise<string> {
   return res.text()
 }
 
-export async function planAllShots(projectId: number): Promise<{ taskId: number; status: string; message: string }> {
-  const res = await fetch(`${BASE}/projects/${projectId}/shots/plan-all`, {
+export async function planAllShots(projectId: number, force: boolean = false): Promise<{
+  taskId?: number
+  status?: string
+  message: string
+  needsConfirmation?: boolean
+  episodeCount?: number
+}> {
+  const url = force
+    ? `${BASE}/projects/${projectId}/shots/plan-all?force=true`
+    : `${BASE}/projects/${projectId}/shots/plan-all`
+
+  const res = await fetch(url, {
     method: 'POST',
   })
   if (!res.ok) {
@@ -178,5 +188,18 @@ export async function planAllShots(projectId: number): Promise<{ taskId: number;
     throw new Error((err as { detail?: string }).detail || '批量规划失败')
   }
   const data = await res.json()
-  return { taskId: data.task_id, status: data.status, message: data.message }
+
+  if (data.needs_confirmation) {
+    return {
+      needsConfirmation: true,
+      message: data.message,
+      episodeCount: data.episode_count
+    }
+  }
+
+  return {
+    taskId: data.task_id,
+    status: data.status,
+    message: data.message
+  }
 }

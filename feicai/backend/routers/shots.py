@@ -150,8 +150,11 @@ async def get_storyboard_markdown(episode_id: int):
     return md_content
 
 
-async def _execute_plan_all(task_id: int, project_id: int, episode_ids: list[int], concurrency: int):
-    """批量规划所有集分镜（后台任务）"""
+async def _execute_plan_all(task_id: int, project_id: int, episode_ids: list[int], concurrency: int, cleanup_downstream: bool):
+    """批量规划所有集分镜（后台任务）
+
+    cleanup_downstream: 是否清理下游数据（prompts.json / assets.json / episode_assets.json）
+    """
     await update_task_status(task_id, "processing")
 
     sem = asyncio.Semaphore(concurrency)
@@ -173,6 +176,23 @@ async def _execute_plan_all(task_id: int, project_id: int, episode_ids: list[int
 
     await asyncio.gather(*[_plan_one(ep_id) for ep_id in episode_ids])
 
+    # 清理下游数据（如果用户确认）
+    if cleanup_downstream and completed > 0:
+        from services.script_service import get_project_path, get_episode_info
+        project_path = await get_project_path(project_id)
+        if project_path:
+            from pathlib import Path
+            project_dir = Path(project_path)
+            # 删除 assets.json / episode_assets.json
+            (project_dir / "assets.json").unlink(missing_ok=True)
+            # 删除所有集的 prompts.json 和 episode_assets.json
+            for ep_id in episode_ids:
+                episode = await get_episode_info(ep_id)
+                if episode:
+                    ep_dir = project_dir / "episodes" / f"EP{episode['number']:02d}"
+                    (ep_dir / "prompts.json").unlink(missing_ok=True)
+                    (ep_dir / "episode_assets.json").unlink(missing_ok=True)
+
     result_msg = f"共 {len(episode_ids)} 集：成功 {completed}，失败 {failed}"
     status = "completed" if completed > 0 else "failed"
     if status == "failed":
@@ -182,12 +202,15 @@ async def _execute_plan_all(task_id: int, project_id: int, episode_ids: list[int
 
 
 @project_shots_router.post("/plan-all")
-async def plan_all_shots(project_id: int, background_tasks: BackgroundTasks):
-    """批量规划项目所有集分镜（并发数由项目设置决定）"""
+async def plan_all_shots(project_id: int, background_tasks: BackgroundTasks, force: bool = False):
+    """批量规划项目所有集分镜（并发数由项目设置决定）
+
+    force: 强制执行并清理下游数据（prompts/assets）
+    """
     # 查询所有集数
     async with aiosqlite.connect(DB_PATH) as db:
         rows = await (await db.execute(
-            "SELECT id FROM episodes WHERE project_id = ? ORDER BY number",
+            "SELECT id, number FROM episodes WHERE project_id = ? ORDER BY number",
             (project_id,)
         )).fetchall()
 
@@ -195,6 +218,27 @@ async def plan_all_shots(project_id: int, background_tasks: BackgroundTasks):
         raise HTTPException(404, "项目下无集数")
 
     episode_ids = [r[0] for r in rows]
+
+    # 检测是否已有 prompts.json（任意一集）
+    from services.script_service import get_project_path, get_episode_info
+    from pathlib import Path
+    project_path = await get_project_path(project_id)
+    has_prompts = False
+    if project_path:
+        project_dir = Path(project_path)
+        for ep_id, ep_num in rows:
+            ep_dir = project_dir / "episodes" / f"EP{ep_num:02d}"
+            if (ep_dir / "prompts.json").exists():
+                has_prompts = True
+                break
+
+    # 如果已有 prompts 且未强制执行，返回需要确认
+    if has_prompts and not force:
+        return {
+            "needs_confirmation": True,
+            "message": "检测到已生成提示词，批量规划会删除所有下游数据（资产+提示词）",
+            "episode_count": len(episode_ids)
+        }
 
     # 读取并发数设置
     from services.prompt_service import get_global_settings
@@ -205,10 +249,10 @@ async def plan_all_shots(project_id: int, background_tasks: BackgroundTasks):
     task_id = await create_task(
         project_id=project_id,
         task_type="plan_all_shots",
-        payload={"episode_ids": episode_ids, "concurrency": concurrency}
+        payload={"episode_ids": episode_ids, "concurrency": concurrency, "cleanup": has_prompts}
     )
 
-    background_tasks.add_task(_execute_plan_all, task_id, project_id, episode_ids, concurrency)
+    background_tasks.add_task(_execute_plan_all, task_id, project_id, episode_ids, concurrency, has_prompts)
 
     return {
         "task_id": task_id,

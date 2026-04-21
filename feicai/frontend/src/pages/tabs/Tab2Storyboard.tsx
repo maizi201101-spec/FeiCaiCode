@@ -4,7 +4,6 @@ import { planAllShots } from '../../api/shots'
 
 import ShotTable from '../../components/storyboard/ShotTable'
 import GroupView from '../../components/storyboard/GroupView'
-import ExportPromptsButton from '../../components/common/ExportPromptsButton'
 
 interface Tab2StoryboardProps {
   projectId: number
@@ -41,11 +40,30 @@ export default function Tab2Storyboard({ projectId, episodeId }: Tab2StoryboardP
   }
 
   const handlePlanAll = async () => {
-    if (!confirm(`确定要批量规划所有集分镜吗？这将覆盖已有分镜数据。`)) return
     setPlanningAll(true)
     try {
-      const result = await planAllShots(projectId)
-      alert(`${result.message}\n任务ID: ${result.taskId}`)
+      // 第一次调用：检测是否需要确认
+      const result = await planAllShots(projectId, false)
+
+      if (result.needsConfirmation) {
+        // 已有提示词，需要二次确认
+        const confirmed = confirm(
+          `⚠️ ${result.message}\n\n` +
+          `共 ${result.episodeCount} 集将被重新规划，所有资产和提示词数据将被删除。\n\n` +
+          `此操作通常仅在项目初期使用，相当于重置整个工作流。\n\n` +
+          `确定要继续吗？`
+        )
+        if (!confirmed) {
+          setPlanningAll(false)
+          return
+        }
+        // 用户确认，强制执行
+        const forceResult = await planAllShots(projectId, true)
+        alert(`${forceResult.message}\n任务ID: ${forceResult.taskId}`)
+      } else {
+        // 首次规划，直接执行
+        alert(`${result.message}\n任务ID: ${result.taskId}`)
+      }
     } catch (e) {
       alert(e instanceof Error ? e.message : '批量规划失败')
     } finally {
@@ -138,7 +156,6 @@ export default function Tab2Storyboard({ projectId, episodeId }: Tab2StoryboardP
 
         {/* 操作按钮 */}
         <div className="flex gap-2">
-          <ExportPromptsButton episodeId={episodeId} />
           <button
             onClick={refetch}
             className="px-3 py-1 bg-gray-700 text-gray-300 rounded hover:bg-gray-600"
