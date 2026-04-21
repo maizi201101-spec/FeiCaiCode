@@ -21,7 +21,8 @@ class GroupPrompt(BaseModel):
     """组级视频提示词（仅在用户编辑后持久化）"""
     group_id: str
     combined_video_prompt: str  # 组合后的完整视频提示词
-    reference_asset_ids: List[str] = []  # 该组引用的资产ID列表（去重）
+    reference_asset_ids: List[str] = []  # 该组引用的资产key列表（角色含版本：assetId_costume）
+    anchor_declaration: Optional[str] = None  # 可编辑的锚定声明文本
     edited: bool = False        # 是否手动编辑过
     confirmed: bool = False     # 是否确认
     last_auto_generated: Optional[str] = None  # 最后一次自动生成的时间戳
@@ -46,6 +47,7 @@ class GroupPromptUpdate(BaseModel):
     """组级提示词更新请求"""
     combined_video_prompt: str
     reference_asset_ids: Optional[List[str]] = None
+    anchor_declaration: Optional[str] = None
     confirmed: Optional[bool] = None
 
 

@@ -1,14 +1,22 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { usePrompts } from '../../hooks/usePrompts'
 import { useShots } from '../../hooks/useShots'
 import { useAssets } from '../../hooks/useAssets'
 import { useGlobalSettings } from '../../hooks/useGlobalSettings'
 import { updateGroupPrompt, resetGroupPrompt } from '../../api/prompts'
-import { getImageUrl } from '../../api/assets'
+import { type Asset, getImageUrl } from '../../api/assets'
 import ShotNavPanel from '../../components/assembly/ShotNavPanel'
 import GroupCentralWorkArea from '../../components/assembly/GroupCentralWorkArea'
 import PreviewDrawer from '../../components/assembly/PreviewDrawer'
 import ExportPromptsButton from '../../components/common/ExportPromptsButton'
+
+// 当集资产条目（区分角色不同版本）
+export interface EpisodeAssetItem {
+  key: string          // 唯一标识：角色含版本 assetId_costume，场景/道具 assetId
+  asset: Asset
+  displayName: string  // 显示名：角色 "团团(书生装)"，场景/道具直接名称
+  imageIndex: number   // 1-based，对应 getImageUrl 的第4参数
+}
 
 interface Tab3AssemblyProps {
   episodeId: number
@@ -26,9 +34,13 @@ export default function Tab3Assembly({
   onFocusHandled
 }: Tab3AssemblyProps) {
   const [currentGroupId, setCurrentGroupId] = useState<string | null>(null)
-  const [selectedReferenceImages, setSelectedReferenceImages] = useState<string[]>([])
+  const [selectedItems, setSelectedItems] = useState<EpisodeAssetItem[]>([])
   const [showPreview, setShowPreview] = useState(false)
   const [editingPrompt, setEditingPrompt] = useState('')
+
+  // 锚定声明（可编辑版本）
+  const [editableAnchor, setEditableAnchor] = useState('')
+  const isAnchorUserEditedRef = useRef(false)
 
   // 生成参数
   const [duration, setDuration] = useState(12)
@@ -56,46 +68,81 @@ export default function Tab3Assembly({
   )
   const savedGroupPrompt = promptsCollection?.group_prompts?.find(gp => gp.group_id === currentGroupId)
 
-  // 提取本组用到的资产
-  const groupAssets = useMemo(() => {
-    if (!currentGroupShots.length) return []
+  // 当集所有资产条目（从全集 shots 汇总，角色按 costume 区分版本）
+  const episodeAssets = useMemo(() => {
+    if (!shotsCollection?.shots.length) return []
 
-    const assetIds = new Set<string>()
-    currentGroupShots.forEach(shot => {
-      if (shot.asset_refs) {
-        // 从角色名找 asset_id
-        shot.asset_refs.characters.forEach(c => {
-          const asset = allAssets.find(a => a.name === c.name && a.asset_type === 'character')
-          if (asset) assetIds.add(asset.asset_id)
+    const items: EpisodeAssetItem[] = []
+    const seen = new Set<string>()
+
+    shotsCollection.shots.forEach(shot => {
+      if (!shot.asset_refs) return
+
+      // 角色：按 (assetId, costume) 区分版本
+      shot.asset_refs.characters.forEach(c => {
+        const asset = allAssets.find(a => a.name === c.name && a.asset_type === 'character')
+        if (!asset) return
+
+        const key = c.costume ? `${asset.asset_id}_${c.costume}` : asset.asset_id
+        if (seen.has(key)) return
+        seen.add(key)
+
+        // 尝试通过 costume 匹配 variant，找到则用对应图片索引
+        let imageIndex = 1
+        if (c.costume && asset.variants?.length) {
+          const vi = asset.variants.findIndex(
+            v => v.variant_name === c.costume || v.variant_name.includes(c.costume) || c.costume.includes(v.variant_name)
+          )
+          if (vi >= 0) imageIndex = vi + 1
+        }
+
+        items.push({
+          key,
+          asset,
+          displayName: c.costume ? `${c.name}(${c.costume})` : c.name,
+          imageIndex,
         })
-        // 从场景名找 asset_id
-        shot.asset_refs.scenes.forEach(sceneName => {
-          const asset = allAssets.find(a => a.name === sceneName && a.asset_type === 'scene')
-          if (asset) assetIds.add(asset.asset_id)
-        })
-        // 从道具名找 asset_id
-        shot.asset_refs.props.forEach(propName => {
-          const asset = allAssets.find(a => a.name === propName && a.asset_type === 'prop')
-          if (asset) assetIds.add(asset.asset_id)
-        })
-      }
+      })
+
+      // 场景
+      shot.asset_refs.scenes.forEach(sceneName => {
+        const asset = allAssets.find(a => a.name === sceneName && a.asset_type === 'scene')
+        if (!asset || seen.has(asset.asset_id)) return
+        seen.add(asset.asset_id)
+        items.push({ key: asset.asset_id, asset, displayName: sceneName, imageIndex: 1 })
+      })
+
+      // 道具
+      shot.asset_refs.props.forEach(propName => {
+        const asset = allAssets.find(a => a.name === propName && a.asset_type === 'prop')
+        if (!asset || seen.has(asset.asset_id)) return
+        seen.add(asset.asset_id)
+        items.push({ key: asset.asset_id, asset, displayName: propName, imageIndex: 1 })
+      })
     })
 
-    return allAssets.filter(a => assetIds.has(a.asset_id))
-  }, [currentGroupShots, allAssets])
+    return items
+  }, [shotsCollection, allAssets])
 
-  // 生成锚定声明
-  const anchorDeclaration = useMemo(() => {
-    if (selectedReferenceImages.length === 0) return ''
+  // 自动锚定声明（只读，基于选中顺序）
+  const anchorDeclaration = useMemo(
+    () => selectedItems.map((item, i) => `图${i + 1}是${item.displayName}`).join('，'),
+    [selectedItems]
+  )
 
-    return selectedReferenceImages.map((imgUrl, i) => {
-      const asset = allAssets.find(a => {
-        const url = a.images[0] ? getImageUrl(projectId, a.asset_type, a.asset_id, 1) : null
-        return url === imgUrl
-      })
-      return asset ? `图${i + 1}是${asset.name}` : null
-    }).filter(Boolean).join('，')
-  }, [selectedReferenceImages, allAssets, projectId])
+  // 可编辑锚定声明：选中变化时同步（除非用户手动改过）
+  useEffect(() => {
+    if (!isAnchorUserEditedRef.current) {
+      setEditableAnchor(anchorDeclaration)
+    }
+  }, [anchorDeclaration])
+
+  // 组切换时重置锚定和选中
+  useEffect(() => {
+    isAnchorUserEditedRef.current = false
+    setSelectedItems([])
+    setEditableAnchor('')
+  }, [currentGroupId])
 
   // 初始化：选中第一个组
   useEffect(() => {
@@ -122,34 +169,27 @@ export default function Tab3Assembly({
   // Handlers
   const handleSelectGroup = (groupId: string) => {
     setCurrentGroupId(groupId)
-    setSelectedReferenceImages([])
   }
 
-  const handleToggleReference = (imageUrl: string) => {
-    if (selectedReferenceImages.includes(imageUrl)) {
-      setSelectedReferenceImages(prev => prev.filter(img => img !== imageUrl))
-    } else if (selectedReferenceImages.length < 6) {
-      setSelectedReferenceImages(prev => [...prev, imageUrl])
-    }
+  const handleToggleItem = (item: EpisodeAssetItem) => {
+    isAnchorUserEditedRef.current = false  // 点选时重置，让声明重新同步
+    setSelectedItems(prev => {
+      const exists = prev.some(i => i.key === item.key)
+      if (exists) return prev.filter(i => i.key !== item.key)
+      if (prev.length >= 6) return prev
+      return [...prev, item]
+    })
   }
 
   const handleSaveGroupPrompt = async () => {
     if (!currentGroupId) return
 
     try {
-      const referenceAssetIds = selectedReferenceImages.map(imgUrl => {
-        const asset = allAssets.find(a => {
-          const url = a.images[0] ? getImageUrl(projectId, a.asset_type, a.asset_id, 1) : null
-          return url === imgUrl
-        })
-        return asset?.asset_id
-      }).filter(Boolean) as string[]
-
       await updateGroupPrompt(episodeId, currentGroupId, {
         combined_video_prompt: editingPrompt,
-        reference_asset_ids: referenceAssetIds
+        reference_asset_ids: selectedItems.map(i => i.key),
+        anchor_declaration: editableAnchor || undefined,
       })
-
       await refetch()
       alert('保存成功')
     } catch (e) {
@@ -175,7 +215,8 @@ export default function Tab3Assembly({
     try {
       await updateGroupPrompt(episodeId, currentGroupId, {
         combined_video_prompt: editingPrompt,
-        confirmed: true
+        anchor_declaration: editableAnchor || undefined,
+        confirmed: true,
       })
       await refetch()
       alert('确认成功')
@@ -219,9 +260,7 @@ export default function Tab3Assembly({
     <div className="flex h-full flex-col overflow-hidden">
       {/* 顶部工具栏 */}
       <div className="flex items-center justify-between px-2 py-1 border-b border-gray-800 bg-gray-900">
-        <div className="text-sm text-gray-400">
-          组级视频生成
-        </div>
+        <div className="text-sm text-gray-400">组级视频生成</div>
         <ExportPromptsButton episodeId={episodeId} projectId={projectId} />
       </div>
 
@@ -244,20 +283,23 @@ export default function Tab3Assembly({
         {/* 中央工作区 */}
         <GroupCentralWorkArea
           projectId={projectId}
-          episodeId={episodeId}
           currentGroupId={currentGroupId}
           groupShots={currentGroupShots}
           groupPrompts={currentGroupPrompts}
           savedGroupPrompt={savedGroupPrompt}
-          groupAssets={groupAssets}
+          episodeAssets={episodeAssets}
+          selectedItems={selectedItems}
+          onToggleItem={handleToggleItem}
+          anchorDeclaration={anchorDeclaration}
+          editableAnchor={editableAnchor}
+          onEditableAnchorChange={(text) => {
+            isAnchorUserEditedRef.current = true
+            setEditableAnchor(text)
+          }}
           onEditGroupPrompt={setEditingPrompt}
           onSaveGroupPrompt={handleSaveGroupPrompt}
           onResetGroupPrompt={handleResetGroupPrompt}
           onConfirmGroupPrompt={handleConfirmGroupPrompt}
-          selectedReferenceImages={selectedReferenceImages}
-          onToggleReference={handleToggleReference}
-          anchorDeclaration={anchorDeclaration}
-          settings={settings}
           duration={duration}
           setDuration={setDuration}
           resolution={resolution}
@@ -275,7 +317,7 @@ export default function Tab3Assembly({
         open={showPreview}
         onClose={() => setShowPreview(false)}
         combinedPrompt={editingPrompt}
-        anchorDeclaration={anchorDeclaration}
+        anchorDeclaration={editableAnchor}
         globalPrompt={settings?.global_prompt || ''}
         settings={{
           default_model: settings?.default_model || 'seedance2.0',
@@ -288,6 +330,8 @@ export default function Tab3Assembly({
         ratio={ratio}
         onGenerate={handleGenerateVideo}
         generating={false}
+        selectedItems={selectedItems}
+        projectId={projectId}
       />
     </div>
   )

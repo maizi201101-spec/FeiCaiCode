@@ -67,6 +67,7 @@ async def read_prompts(episode_id: int) -> PromptsCollection:
             group_id=gp["group_id"],
             combined_video_prompt=gp.get("combined_video_prompt", ""),
             reference_asset_ids=gp.get("reference_asset_ids", []),
+            anchor_declaration=gp.get("anchor_declaration"),
             edited=gp.get("edited", False),
             confirmed=gp.get("confirmed", False),
             last_auto_generated=gp.get("last_auto_generated"),

@@ -124,6 +124,8 @@ async def update_group_prompt(episode_id: int, group_id: str, updates: GroupProm
     group_prompt.combined_video_prompt = updates.combined_video_prompt
     if updates.reference_asset_ids is not None:
         group_prompt.reference_asset_ids = updates.reference_asset_ids
+    if updates.anchor_declaration is not None:
+        group_prompt.anchor_declaration = updates.anchor_declaration
     if updates.confirmed is not None:
         group_prompt.confirmed = updates.confirmed
     group_prompt.edited = True

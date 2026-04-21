@@ -14,6 +14,7 @@ export interface GroupPrompt {
   group_id: string
   combined_video_prompt: string
   reference_asset_ids: string[]
+  anchor_declaration?: string
   edited: boolean
   confirmed: boolean
   last_auto_generated?: string
@@ -35,6 +36,7 @@ export interface PromptUpdatePayload {
 export interface GroupPromptUpdatePayload {
   combined_video_prompt: string
   reference_asset_ids?: string[]
+  anchor_declaration?: string
   confirmed?: boolean
 }
 
